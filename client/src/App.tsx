@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { TouchEvent } from 'react';
 import { css } from './css';
 import { KEY, MEMBERS, defaultDoc, normLink } from './data';
 import {
@@ -24,7 +25,7 @@ import type {
   Tab,
   Weather,
 } from './types';
-import type { ActView, AsgChip, FoodView, PackView } from './viewmodels';
+import type { ActView, AsgChip, AsgTab, FoodView, PackView } from './viewmodels';
 import Header from './components/Header';
 import StartScreen from './components/StartScreen';
 import type { MeChip } from './components/StartScreen';
@@ -40,6 +41,7 @@ import type { SheetChip } from './components/EditSheet';
 import InstallPrompt from './components/InstallPrompt';
 import ItemDetail from './components/ItemDetail';
 import type { DetailComment } from './components/ItemDetail';
+import SyncBadge from './components/SyncBadge';
 
 interface Initial {
   me: string | null;
@@ -90,6 +92,8 @@ const NAV_DEFS: [Tab, string][] = [
   ['pack', 'checklist'],
   ['food', 'restaurant'],
 ];
+// Left→right tab order for swipe navigation (single source of truth = the nav).
+const TAB_ORDER: Tab[] = NAV_DEFS.map(([t]) => t);
 
 export default function App() {
   const initial = useMemo(loadInitial, []);
@@ -131,6 +135,7 @@ export default function App() {
       /* ignore */
     }
   }, [lang]);
+
 
   const zh = lang === 'zh';
   const L = UI[zh ? 'zh' : 'ko'];
@@ -178,11 +183,11 @@ export default function App() {
   const selectMe = (id: string) => {
     setMe(id);
     setProfileOpen(false);
-    sync.pushSoon();
+    sync.pushSoon({ silent: true });
   };
   const changeTab = (t: Tab) => {
     setTab(t);
-    sync.pushSoon();
+    sync.pushSoon({ silent: true });
   };
   const openAdd = (list: ListKey) => {
     setSheet({ mode: 'add', list });
@@ -225,13 +230,13 @@ export default function App() {
     const { list, id } = detail;
     setDetail(null);
     if (list === 'activities') {
-      const a = activities.find((x) => x.id === id);
+      const a = activities.find((x) => x.id === id && !x.del);
       if (a) openEditAct(a);
     } else if (list === 'foods') {
-      const f = foods.find((x) => x.id === id);
+      const f = foods.find((x) => x.id === id && !x.del);
       if (f) openEditFood(f);
     } else {
-      const p = packing.find((x) => x.id === id);
+      const p = packing.find((x) => x.id === id && !x.del);
       if (p) openEditPack(p);
     }
   };
@@ -267,6 +272,7 @@ export default function App() {
   const onCheck = (p: PackItem) => {
     sync.touch(p.id);
     const personal = p.cat === 'personal';
+    const now = Date.now();
     setPacking((prev) =>
       prev.map((it) => {
         if (it.id !== p.id) return it;
@@ -277,11 +283,15 @@ export default function App() {
             checkedBy: cb.includes(me as string)
               ? cb.filter((x) => x !== me)
               : [...cb, me as string],
+            ts: now,
           };
         }
-        return { ...it, checked: !it.checked };
+        return { ...it, checked: !it.checked, ts: now };
       }),
     );
+    // touch() above only queued a silent presence push; a check IS a content
+    // change, so flag the save badge explicitly.
+    sync.pushSoon();
   };
   const toggleAsg = (mid: string) => {
     setFAsg((cur) => (cur.includes(mid) ? cur.filter((x) => x !== mid) : [...cur, mid]));
@@ -293,21 +303,22 @@ export default function App() {
     const memo = fMemo.trim();
     const cat = fCat;
     const link = (fLink || '').trim();
+    const now = Date.now();
     if (sheet.mode === 'add') {
       if (sheet.list === 'activities') {
         setActivities((prev) => [
           ...prev,
-          { id: 'x' + Date.now(), name: n, zh: '', desc: memo, link, votes: [] },
+          { id: 'x' + now, name: n, zh: '', desc: memo, link, votes: [], ts: now },
         ]);
       } else if (sheet.list === 'packing') {
         setPacking((prev) => [
           ...prev,
-          { id: 'x' + Date.now(), name: n, zh: '', cat, assignees: [...fAsg], checked: false },
+          { id: 'x' + now, name: n, zh: '', cat, assignees: [...fAsg], checked: false, ts: now },
         ]);
       } else {
         setFoods((prev) => [
           ...prev,
-          { id: 'x' + Date.now(), name: n, zh: '', type: '추가', memo, link, likes: [] },
+          { id: 'x' + now, name: n, zh: '', type: '추가', memo, link, likes: [], ts: now },
         ]);
       }
     } else {
@@ -315,13 +326,15 @@ export default function App() {
       if (sheet.list === 'activities') {
         setActivities((prev) =>
           prev.map((it) =>
-            it.id !== id ? it : { ...it, name: n, zh: it.name === n ? it.zh : '', desc: memo, link },
+            it.id !== id
+              ? it
+              : { ...it, name: n, zh: it.name === n ? it.zh : '', desc: memo, link, ts: now },
           ),
         );
       } else if (sheet.list === 'foods') {
         setFoods((prev) =>
           prev.map((it) =>
-            it.id !== id ? it : { ...it, name: n, zh: it.name === n ? it.zh : '', memo, link },
+            it.id !== id ? it : { ...it, name: n, zh: it.name === n ? it.zh : '', memo, link, ts: now },
           ),
         );
       } else {
@@ -329,7 +342,7 @@ export default function App() {
           prev.map((it) =>
             it.id !== id
               ? it
-              : { ...it, name: n, zh: it.name === n ? it.zh : '', cat, assignees: [...fAsg] },
+              : { ...it, name: n, zh: it.name === n ? it.zh : '', cat, assignees: [...fAsg], ts: now },
           ),
         );
       }
@@ -340,11 +353,45 @@ export default function App() {
   const doDelete = () => {
     if (!sheet || sheet.mode !== 'edit' || !sheet.id) return;
     const id = sheet.id;
-    if (sheet.list === 'activities') setActivities((prev) => prev.filter((it) => it.id !== id));
-    else if (sheet.list === 'packing') setPacking((prev) => prev.filter((it) => it.id !== id));
-    else setFoods((prev) => prev.filter((it) => it.id !== id));
+    const now = Date.now();
+    // Soft-delete: mark a monotonic tombstone (del:true) instead of removing the
+    // element, so the per-item sync merge propagates the deletion to every
+    // device and a stale copy can never resurrect it. View models hide `del`.
+    const tomb = <T extends { id: string }>(prev: T[]) =>
+      prev.map((it) => (it.id !== id ? it : { ...it, del: true, ts: now }));
+    if (sheet.list === 'activities') setActivities(tomb);
+    else if (sheet.list === 'packing') setPacking(tomb);
+    else setFoods(tomb);
     setSheet(null);
     sync.pushSoon();
+  };
+
+  // Horizontal swipe to move between tabs. Only a decisive, mostly-horizontal,
+  // reasonably quick gesture counts, so it never fights vertical scrolling. It's
+  // disabled on the start screen and while any overlay is open (their own
+  // touches shouldn't bubble into a tab change).
+  const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const swipeArmed = () => !!me && !sheet && !detail && !profileOpen;
+  const onTouchStart = (e: TouchEvent) => {
+    if (!swipeArmed() || e.touches.length !== 1) {
+      swipeRef.current = null;
+      return;
+    }
+    const t = e.touches[0];
+    swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+  };
+  const onTouchEnd = (e: TouchEvent) => {
+    const s = swipeRef.current;
+    swipeRef.current = null;
+    if (!s || !swipeArmed()) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - s.t > 700) return;
+    const i = TAB_ORDER.indexOf(tab);
+    if (i < 0) return;
+    const ni = dx < 0 ? Math.min(TAB_ORDER.length - 1, i + 1) : Math.max(0, i - 1);
+    if (ni !== i) changeTab(TAB_ORDER[ni]);
   };
 
   // Derived view models
@@ -377,7 +424,7 @@ export default function App() {
     onTap: () => changeTab(t),
   }));
 
-  const acts: ActView[] = activities.map((a) => {
+  const acts: ActView[] = activities.filter((a) => !a.del).map((a) => {
     const desc = zh ? ACT_DESC_ZH[a.id] || a.desc || '' : a.desc || '';
     return {
       id: a.id,
@@ -392,7 +439,7 @@ export default function App() {
     };
   });
 
-  const foodList: FoodView[] = foods.map((f) => {
+  const foodList: FoodView[] = foods.filter((f) => !f.del).map((f) => {
     const memo = zh ? FOOD_MEMO_ZH[f.id] || f.memo || '' : f.memo || '';
     return {
       id: f.id,
@@ -423,16 +470,27 @@ export default function App() {
               return m ? { label: m.name, bg: m.color } : null;
             })
             .filter((x): x is AsgChip => x !== null),
+      assigneeIds: personal ? [] : (p.assignees || []).filter((id) => MEMBERS.some((m) => m.id === id)),
       commentCount: liveCount(p.id),
       edChips: edFor(p.id),
       onCheck: () => onCheck(p),
       onTap: () => openDetail('packing', p.id),
     };
   };
-  const sharedRaw = packing.filter((p) => p.cat === 'shared');
-  const personalRaw = packing.filter((p) => p.cat === 'personal');
+  const sharedRaw = packing.filter((p) => !p.del && p.cat === 'shared');
+  const personalRaw = packing.filter((p) => !p.del && p.cat === 'personal');
   const sharedItems = sharedRaw.map(packRow);
   const personalItems = personalRaw.map(packRow);
+  // Split shared items into assigned (shown up top, filterable by assignee) and
+  // still-unassigned (shown separately below), per the "담당자별 뱃지 탭" request.
+  const sharedAssigned = sharedItems.filter((p) => p.assigneeIds.length > 0);
+  const sharedUnassigned = sharedItems.filter((p) => p.assigneeIds.length === 0);
+  const asgTabs: AsgTab[] = MEMBERS.map((m) => ({
+    id: m.id,
+    label: m.name,
+    color: m.color,
+    count: sharedAssigned.filter((p) => p.assigneeIds.includes(m.id)).length,
+  })).filter((t) => t.count > 0);
   const sharedProg =
     sharedRaw.filter((p) => p.checked).length + '/' + sharedRaw.length + (zh ? ' 完成' : ' 완료');
   const personalProg =
@@ -535,7 +593,7 @@ export default function App() {
   } | null = null;
   if (detail) {
     if (detail.list === 'activities') {
-      const a = activities.find((x) => x.id === detail.id);
+      const a = activities.find((x) => x.id === detail.id && !x.del);
       if (a)
         detailVM = {
           title: zh && a.zh ? a.zh : a.name,
@@ -545,7 +603,7 @@ export default function App() {
           linkShow: !!a.link,
         };
     } else if (detail.list === 'foods') {
-      const f = foods.find((x) => x.id === detail.id);
+      const f = foods.find((x) => x.id === detail.id && !x.del);
       if (f)
         detailVM = {
           title: zh && f.zh ? f.zh : f.name,
@@ -555,7 +613,7 @@ export default function App() {
           linkShow: !!f.link,
         };
     } else {
-      const p = packing.find((x) => x.id === detail.id);
+      const p = packing.find((x) => x.id === detail.id && !x.del);
       if (p)
         detailVM = {
           title: zh && p.zh ? p.zh : p.name,
@@ -579,6 +637,8 @@ export default function App() {
       )}
     >
       <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         style={css(
           'width:100%;max-width:430px;min-height:100vh;background:#F2F9FE;position:relative;box-shadow:0 0 40px rgba(30,100,160,.18)',
         )}
@@ -596,7 +656,7 @@ export default function App() {
         />
         <div
           style={css(
-            'position:relative;margin-top:-22px;border-radius:22px 22px 0 0;background:#F2F9FE;padding:18px 16px 96px;display:flex;flex-direction:column;gap:14px',
+            'position:relative;margin-top:-22px;border-radius:22px 22px 0 0;background:#F2F9FE;padding:14px 16px 88px;display:flex;flex-direction:column;gap:10px',
           )}
         >
           {!me && <StartScreen L={L} meChips={meChips} />}
@@ -606,7 +666,9 @@ export default function App() {
             <PackingTab
               L={L}
               lang={lang}
-              sharedItems={sharedItems}
+              sharedAssigned={sharedAssigned}
+              sharedUnassigned={sharedUnassigned}
+              asgTabs={asgTabs}
               personalItems={personalItems}
               sharedProg={sharedProg}
               personalProg={personalProg}
@@ -617,6 +679,7 @@ export default function App() {
         </div>
 
         {!!me && <BottomNav navs={navs} />}
+        {!!me && sync.saveState !== 'idle' && <SyncBadge hint={sync.saveState} L={L} />}
         <InstallPrompt zh={zh} navOffset={!!me} />
         {detail && detailVM && (
           <ItemDetail

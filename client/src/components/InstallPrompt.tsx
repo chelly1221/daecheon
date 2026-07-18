@@ -112,6 +112,9 @@ export default function InstallPrompt({ zh, navOffset }: Props) {
 
   return (
     <div
+      // Swallow touch-start so a swipe over this fixed banner doesn't bubble up
+      // to the app container's swipe-to-change-tab handler.
+      onTouchStart={(e) => e.stopPropagation()}
       style={{
         ...css(
           'position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:60;padding:0 12px;box-sizing:border-box',

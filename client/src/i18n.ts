@@ -52,6 +52,12 @@ export interface UIStrings {
   copy: string;
   copied: string;
   deletedMsg: string;
+  saving: string;
+  saved: string;
+  saveErr: string;
+  assigned: string;
+  unassigned: string;
+  filterAll: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -107,6 +113,12 @@ export const UI: Record<Lang, UIStrings> = {
     copy: '복사',
     copied: '복사됨',
     deletedMsg: '삭제된 메시지',
+    saving: '저장 중…',
+    saved: '저장됨',
+    saveErr: '저장 실패 · 재시도 중',
+    assigned: '담당 배정됨',
+    unassigned: '미지정',
+    filterAll: '전체보기',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -160,6 +172,12 @@ export const UI: Record<Lang, UIStrings> = {
     copy: '复制',
     copied: '已复制',
     deletedMsg: '该消息已删除',
+    saving: '保存中…',
+    saved: '已保存',
+    saveErr: '保存失败 · 重试中',
+    assigned: '已分配',
+    unassigned: '未分配',
+    filterAll: '全部',
   },
 };
 

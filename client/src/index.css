@@ -60,3 +60,12 @@ html[lang='zh'] [style*='Jua'] {
     transform: translateX(14px);
   }
 }
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}

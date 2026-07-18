@@ -30,11 +30,21 @@ export interface AsgChip {
   bg: string;
 }
 
+/** A per-assignee filter tab shown above the assigned shared-packing items. */
+export interface AsgTab {
+  id: string;
+  label: string;
+  color: string;
+  count: number;
+}
+
 export interface PackView {
   id: string;
   name: string;
   checked: boolean;
   asgChips: AsgChip[];
+  /** Member ids this (shared) item is assigned to; empty for personal/unassigned. */
+  assigneeIds: string[];
   commentCount: number;
   edChips: EditChip[];
   onCheck: () => void;

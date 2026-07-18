@@ -9,7 +9,19 @@ export interface Member {
   color: string;
 }
 
-export interface Activity {
+/**
+ * Fields every synced list item carries so it can be merged per-item across
+ * devices (see `mergeItems` in data.ts / server). `ts` is the last-modified
+ * time driving last-write-wins; `del` is a monotonic soft-delete tombstone
+ * (false→true only) so a deletion is never resurrected by a stale device.
+ */
+export interface Identified {
+  id: string;
+  ts?: number;
+  del?: boolean;
+}
+
+export interface Activity extends Identified {
   id: string;
   name: string;
   zh: string;
@@ -18,7 +30,7 @@ export interface Activity {
   votes: string[];
 }
 
-export interface PackItem {
+export interface PackItem extends Identified {
   id: string;
   name: string;
   zh: string;
@@ -28,7 +40,7 @@ export interface PackItem {
   checkedBy?: string[];
 }
 
-export interface Food {
+export interface Food extends Identified {
   id: string;
   name: string;
   zh: string;

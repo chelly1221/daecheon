@@ -14,24 +14,24 @@ interface Props {
 
 export default function ActivitiesTab({ L, lang, acts, onAdd }: Props) {
   return (
-    <div data-screen-label="액티비티" style={css('display:flex;flex-direction:column;gap:12px')}>
+    <div data-screen-label="액티비티" style={css('display:flex;flex-direction:column;gap:9px')}>
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>
         <div style={css("font-family:'Jua',sans-serif;font-size:19px;color:#164A6B")}>{L.act}</div>
         <button
           onClick={onAdd}
           style={css(
-            'min-height:38px;padding:7px 16px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:12.5px;font-weight:700',
+            'min-height:36px;padding:6px 15px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:12.5px;font-weight:700',
           )}
         >
           {L.add}
         </button>
       </div>
-      <div style={css('font-size:12px;color:#8FAEC4;margin-top:-6px')}>{L.actHint}</div>
+      <div style={css('font-size:12px;color:#8FAEC4;margin-top:-4px')}>{L.actHint}</div>
       {acts.map((a) => (
         <div
           key={a.id}
           style={css(
-            'background:#FFFFFF;border-radius:16px;padding:14px 15px;box-shadow:0 3px 12px rgba(60,130,190,.07);display:flex;flex-direction:column;gap:9px',
+            'background:#FFFFFF;border-radius:16px;padding:11px 13px;box-shadow:0 3px 12px rgba(60,130,190,.07);display:flex;flex-direction:column;gap:7px',
           )}
         >
           <div

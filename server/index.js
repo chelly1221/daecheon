@@ -64,6 +64,48 @@ function mergeComments(a, b) {
   return out;
 }
 
+// Resolve the surviving version of one list item present on two devices.
+// Content is last-write-wins by `ts` (ties keep the existing copy); the `del`
+// tombstone is monotonic, so a deleted item can never be resurrected.
+function pickItem(l, r) {
+  if (!r) return l;
+  const del = !!(l && l.del) || !!(r && r.del);
+  const lt = (l && l.ts) || 0;
+  const rt = (r && r.ts) || 0;
+  // LWW by ts; exact ties broken deterministically and symmetrically (max JSON,
+  // order-independent) so the server and every client agree on the winner.
+  let winner;
+  if (rt > lt) winner = r;
+  else if (lt > rt) winner = l;
+  else winner = JSON.stringify(r) > JSON.stringify(l) ? r : l;
+  if (!!winner.del === del) return winner;
+  return { ...winner, del };
+}
+
+// Merge two arrays of id'd items as a convergent union (mirrors the client's
+// mergeItems). Every id from either side survives; a shared id is resolved by
+// pickItem. This is what stops a device PUTting a stale array from deleting
+// another device's freshly added item — deletions travel as `del` tombstones,
+// never as a missing element.
+function mergeItems(a, b) {
+  const A = Array.isArray(a) ? a : [];
+  const B = Array.isArray(b) ? b : [];
+  const bById = new Map();
+  for (const r of B) if (r && r.id != null) bById.set(r.id, r);
+  const seen = new Set();
+  const out = [];
+  for (const l of A) {
+    if (!l || l.id == null) {
+      out.push(l);
+      continue;
+    }
+    seen.add(l.id);
+    out.push(pickItem(l, bById.get(l.id)));
+  }
+  for (const r of B) if (r && r.id != null && !seen.has(r.id)) out.push(r);
+  return out;
+}
+
 // Serialize read-modify-write per room so concurrent PUTs can't interleave and
 // drop a merged comment. Each room keeps a promise chain; work runs in order.
 const roomChains = new Map();
@@ -98,9 +140,14 @@ app.put('/api/rooms/:id', async (req, res) => {
     const incoming = req.body ?? {};
     await serialize(id, async () => {
       const existing = await readRoom(id);
-      // Last-write-wins for the rest of the doc; append-only union for comments.
+      // Per-item convergent union for every list (a stale incoming array can no
+      // longer delete an item it never saw); append-only union for comments.
+      // presence + updatedAt stay last-write-wins via the `...incoming` spread.
       const doc = {
         ...incoming,
+        activities: mergeItems(existing && existing.activities, incoming.activities),
+        packing: mergeItems(existing && existing.packing, incoming.packing),
+        foods: mergeItems(existing && existing.foods, incoming.foods),
         comments: mergeComments(existing && existing.comments, incoming.comments),
       };
       await writeRoom(id, doc);

@@ -1,4 +1,13 @@
-import type { Activity, Comment, Comments, Food, Member, PackItem, TripDoc } from './types';
+import type {
+  Activity,
+  Comment,
+  Comments,
+  Food,
+  Identified,
+  Member,
+  PackItem,
+  TripDoc,
+} from './types';
 
 export const KEY = 'paros-trip-2026-v1';
 export const ROOM_DEFAULT = 'paros-daecheon-2026-x7k3q9';
@@ -53,6 +62,93 @@ export function mergeComments(local: Comments, remote: Comments): Comments {
     if (Object.keys(out).length !== Object.keys(loc).length) changed = true;
   }
   return changed ? out : loc;
+}
+
+/**
+ * Resolve the surviving version of one item that exists on two devices. Content
+ * uses last-write-wins by `ts` (ties keep `local`, so it never ping-pongs); the
+ * `del` tombstone is monotonic — once either side deleted the item it stays
+ * deleted, so a stale device can never resurrect it.
+ */
+function pickItem<T extends Identified>(local: T, remote: T | undefined): T {
+  if (!remote) return local;
+  const del = !!local.del || !!remote.del;
+  const lt = local.ts || 0;
+  const rt = remote.ts || 0;
+  // Last-write-wins by ts. An exact tie is broken deterministically AND
+  // symmetrically (max JSON is independent of which side is "local"), so the
+  // client and the server always settle on the same version — otherwise two
+  // devices could diverge permanently on a same-ts, different-content item.
+  let winner: T;
+  if (rt > lt) winner = remote;
+  else if (lt > rt) winner = local;
+  else winner = JSON.stringify(remote) > JSON.stringify(local) ? remote : local;
+  if (!!winner.del === del) return winner;
+  return { ...winner, del };
+}
+
+/**
+ * Merge two arrays of id'd items as a convergent union: every id from either
+ * side survives (so a concurrent add is never dropped), and a shared id is
+ * resolved by {@link pickItem}. Local order is preserved with remote-only items
+ * appended. Returns `local` unchanged (same reference) when nothing changed so
+ * callers can skip re-renders.
+ *
+ * This replaces the old doc-level last-write-wins for lists, under which one
+ * device PUTting its slightly stale array silently deleted another device's
+ * just-added item. Deletions now travel as `del` tombstones (never as a missing
+ * element), so "absent from an incoming array" means "this device never saw it",
+ * not "delete it".
+ */
+export function mergeItems<T extends Identified>(local: T[], remote: T[]): T[] {
+  const loc = Array.isArray(local) ? local : [];
+  const rem = Array.isArray(remote) ? remote : [];
+  const remById = new Map<string, T>();
+  for (const r of rem) if (r && r.id != null) remById.set(r.id, r);
+  const seen = new Set<string>();
+  let changed = false;
+  const out: T[] = [];
+  for (const l of loc) {
+    if (!l || l.id == null) {
+      out.push(l);
+      continue;
+    }
+    seen.add(l.id);
+    const w = pickItem(l, remById.get(l.id));
+    if (w !== l) changed = true;
+    out.push(w);
+  }
+  for (const r of rem) {
+    if (!r || r.id == null || seen.has(r.id)) continue;
+    out.push(r);
+    changed = true;
+  }
+  return changed ? out : loc;
+}
+
+/**
+ * First-contact reconciliation with an existing room. Takes the server's list
+ * as the source of truth, then re-appends only the local items the *user*
+ * actually touched here (ts>0) that the server doesn't have yet. Pristine seed
+ * defaults (no ts) that the server lacks are dropped — otherwise our baked-in
+ * defaults would resurrect an item that was deleted before this device joined
+ * (including old delete-by-removal that left no tombstone). Used once, on the
+ * first successful pull; every later pull uses {@link mergeItems}.
+ */
+export function adoptItems<T extends Identified>(local: T[], remote: T[]): T[] {
+  const rem = Array.isArray(remote) ? remote : [];
+  const remIds = new Set<string>();
+  for (const r of rem) if (r && r.id != null) remIds.add(r.id);
+  // Server items are taken verbatim (source of truth) — so a server-side edit of
+  // a seed item is never reverted to our baked-in default, and a seed item the
+  // server dropped is never resurrected. We only carry forward local items the
+  // *user* touched here (ts>0) that the server lacks — an add that hasn't synced
+  // yet. Pristine, untouched seed defaults (no ts) are discarded.
+  const out: T[] = rem.slice();
+  for (const l of Array.isArray(local) ? local : []) {
+    if (l && l.id != null && !remIds.has(l.id) && l.ts) out.push(l);
+  }
+  return out;
 }
 
 export const MEMBERS: Member[] = [
