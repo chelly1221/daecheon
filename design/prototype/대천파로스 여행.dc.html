@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=block" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0}
+body{background:#BEE3F8;font-family:'Noto Sans KR','Noto Sans SC','Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#0B7CD8;text-decoration:none}a:hover{color:#095FA6;text-decoration:underline}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+input::placeholder{color:#9DBDD2}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes drift{0%,100%{transform:translateX(0)}50%{transform:translateX(14px)}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:linear-gradient(180deg,#A8D8F5,#CDEBFA);display:flex;justify-content:center">
+<div style="width:100%;max-width:430px;min-height:100vh;background:#F2F9FE;position:relative;box-shadow:0 0 40px rgba(30,100,160,.18)">
+<div style="position:relative;background:linear-gradient(180deg,#38A3F0 0%,#6FC3F7 55%,#A9DDFB 100%);padding:20px 20px 42px;overflow:hidden">
+<div style="position:absolute;top:56px;right:22px;width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF3C4,#FFCE54);box-shadow:0 0 36px rgba(255,222,130,.9);animation:bob 5s ease-in-out infinite"></div>
+<div style="position:absolute;top:66px;right:88px;width:74px;height:24px;border-radius:20px;background:rgba(255,255,255,.85);animation:drift 9s ease-in-out infinite"></div>
+<div style="position:absolute;top:28px;left:-14px;width:90px;height:28px;border-radius:20px;background:rgba(255,255,255,.55);animation:drift 12s ease-in-out infinite"></div>
+<div style="position:relative;display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<span style="background:#FFFFFF;color:#0B7CD8;font-weight:700;font-size:13px;padding:5px 12px;border-radius:999px;box-shadow:0 2px 8px rgba(20,90,150,.25)">{{ ddayLabel }}</span>
+<span style="color:#EAF7FF;font-size:12.5px;font-weight:500">{{ L.resort }}</span>
+<button onClick="{{ onProfile }}" style="margin-left:auto;width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.9);background:{{ myColor }};color:#FFFFFF;font-size:15px;font-weight:700;display:{{ profBtnDisp }};align-items:center;justify-content:center;padding:0;box-shadow:0 2px 8px rgba(20,90,150,.25)">{{ myInitial }}</button>
+</div>
+<h1 style="margin:2px 0 0;font-family:'Jua',sans-serif;font-weight:400;font-size:30px;line-height:1.15;color:#FFFFFF;text-shadow:0 2px 10px rgba(20,90,150,.3)">{{ L.title }}</h1>
+<div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+<div style="flex:1;min-width:0;font-size:13px;color:#F2FAFF;font-weight:500">{{ L.dates }}</div>
+<div style="display:flex;flex:none;background:rgba(255,255,255,.28);border-radius:999px;padding:3px;gap:2px;box-shadow:0 2px 8px rgba(20,90,150,.18)">
+<button onClick="{{ onKo }}" style="min-height:32px;padding:5px 13px;border-radius:999px;border:none;background:{{ koBg }};color:{{ koFg }};font-size:13px;font-weight:700">한</button>
+<button onClick="{{ onZh }}" style="min-height:32px;padding:5px 13px;border-radius:999px;border:none;background:{{ zhBg }};color:{{ zhFg }};font-size:13px;font-weight:700">中</button>
+</div>
+</div>
+</div>
+</div>
+<div style="position:relative;margin-top:-22px;border-radius:22px 22px 0 0;background:#F2F9FE;padding:18px 16px 96px;display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{ noMe }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="시작" style="display:flex;flex-direction:column;gap:14px;padding-top:10px">
+<div style="background:#FFFFFF;border-radius:18px;padding:24px 18px;box-shadow:0 3px 14px rgba(60,130,190,.08);display:flex;flex-direction:column;gap:14px">
+<div style="text-align:center;display:flex;flex-direction:column;gap:4px">
+<div style="font-family:'Jua',sans-serif;font-size:22px;color:#164A6B">{{ L.who }}</div>
+<div style="font-size:13px;color:#5A7D96;margin-top:4px">{{ L.whoSub }}</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ meChips }}" as="c" hint-placeholder-count="5">
+<button onClick="{{ c.onTap }}" style="min-height:54px;padding:12px 16px;border-radius:15px;border:1.5px solid #D5E7F3;background:#F7FCFF;color:#22597C;font-size:15.5px;font-weight:600;display:flex;align-items:center;gap:12px;text-align:left"><span style="width:14px;height:14px;border-radius:50%;background:{{ c.dot }};flex:none"></span><span style="flex:1">{{ c.label }}</span><span style="color:#9DBDD2;font-size:14px">→</span></button>
+</sc-for>
+</div>
+<div style="font-size:11.5px;color:#9DBDD2;text-align:center;line-height:1.6">{{ L.whoNote }}</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="홈" style="display:flex;flex-direction:column;gap:14px">
+<div style="background:linear-gradient(120deg,#8A6A4B,#A8865E);border-radius:16px;padding:14px 16px;color:#FFF7EC;display:flex;flex-direction:column;gap:4px">
+<div style="font-family:'Jua',sans-serif;font-size:16.5px">{{ L.mudTitle }}</div>
+<div style="font-size:12.5px;line-height:1.6;opacity:.95">{{ L.mudBody1 }}<br>{{ L.mudBody2 }}</div>
+</div>
+<div style="background:#FFFFFF;border-radius:18px;padding:16px;box-shadow:0 3px 14px rgba(60,130,190,.08);display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'Jua',sans-serif;font-size:17px;color:#164A6B">{{ L.weather }}</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+<sc-for list="{{ weatherDays }}" as="w" hint-placeholder-count="3">
+<div style="background:linear-gradient(180deg,#EAF6FF,#F7FCFF);border:1px solid #DCEEFA;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center">
+<div style="font-weight:700;font-size:13.5px;color:#22597C">{{ w.date }}</div>
+<div style="font-size:16px;font-weight:700;color:#0B7CD8;margin-top:2px">{{ w.hi }}°<span style="font-size:12px;color:#8FB4CC;font-weight:500">/{{ w.lo }}°</span></div>
+<div style="font-size:11.5px;color:#4A7593">{{ w.desc }}</div>
+<div style="font-size:11px;color:#66A3E0">{{ L.rain }} {{ w.pp }}</div>
+</div>
+</sc-for>
+</div>
+<div style="font-size:11.5px;color:#8FAEC4;line-height:1.5">{{ weatherNote }}</div>
+</div>
+<div style="background:#FFFFFF;border-radius:18px;padding:16px;box-shadow:0 3px 14px rgba(60,130,190,.08);display:flex;flex-direction:column;gap:10px">
+<div style="font-family:'Jua',sans-serif;font-size:17px;color:#164A6B">{{ L.stay }}</div>
+<div style="display:flex;flex-direction:column;gap:8px;font-size:13.5px;line-height:1.5">
+<div style="display:flex;gap:10px"><span style="flex:none;width:60px;color:#7FA3BC;font-weight:600">{{ L.ci }}</span><span style="color:#33546B">15:00</span></div>
+<div style="display:flex;gap:10px"><span style="flex:none;width:60px;color:#7FA3BC;font-weight:600">{{ L.co }}</span><span style="color:#33546B">11:00</span></div>
+<div style="display:flex;gap:10px"><span style="flex:none;width:60px;color:#7FA3BC;font-weight:600">{{ L.room }}</span><span style="color:#33546B">{{ L.roomV }}</span></div>
+<div style="display:flex;gap:10px"><span style="flex:none;width:60px;color:#7FA3BC;font-weight:600">{{ L.addr }}</span><span style="color:#33546B">{{ L.addrV }}</span></div>
+<div style="display:flex;gap:10px"><span style="flex:none;width:60px;color:#7FA3BC;font-weight:600">{{ L.fac }}</span><span style="color:#33546B">{{ L.facV }}</span></div>
+<div style="display:flex;gap:10px"><span style="flex:none;width:60px;color:#7FA3BC;font-weight:600">{{ L.beach }}</span><span style="color:#33546B">{{ L.beachV }}</span></div>
+</div>
+<div style="display:flex;gap:8px">
+<a href="https://www.hanwharesort.co.kr/irsweb/resort3/resort/rs_room.do?bp_cd=0901&rm_cd=SUI&sel_month=20260701" target="_blank" style="flex:1;min-height:44px;border-radius:12px;background:#0B7CD8;color:#FFFFFF;font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;text-decoration:none">{{ L.roomBtn }}</a>
+<a href="https://www.hanwharesort.co.kr/irsweb/resort3/resort/rs_intro.do?bp_cd=0901" target="_blank" style="flex:1;min-height:44px;border:1.5px solid #BBDCF2;border-radius:12px;background:#FFFFFF;color:#0B7CD8;font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;text-decoration:none">{{ L.siteBtn }}</a>
+</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ isAct }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="액티비티" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+<div style="font-family:'Jua',sans-serif;font-size:19px;color:#164A6B">{{ L.act }}</div>
+<button onClick="{{ onAddAct }}" style="min-height:38px;padding:7px 16px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:12.5px;font-weight:700">{{ L.add }}</button>
+</div>
+<div style="font-size:12px;color:#8FAEC4;margin-top:-6px">{{ L.actHint }}</div>
+<sc-for list="{{ acts }}" as="a" hint-placeholder-count="6">
+<div style="background:#FFFFFF;border-radius:16px;padding:14px 15px;box-shadow:0 3px 12px rgba(60,130,190,.07);display:flex;flex-direction:column;gap:9px">
+<div onClick="{{ a.onTap }}" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+<span style="font-family:'Jua',sans-serif;font-size:16.5px;color:#1C4E70;line-height:1.3">{{ a.name }}</span>
+<a href="{{ a.link }}" target="_blank" rel="noopener" onClick="{{ stopProp }}" style="display:{{ a.linkDisp }};align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#EAF4FC;border:1px solid #C9E2F4;font-size:12px;text-decoration:none">🔗</a>
+</div>
+<div style="display:{{ a.descDisp }};font-size:12.5px;color:#5A7D96;line-height:1.5">{{ a.desc }}</div>
+</div>
+<span style="flex:none;color:#B8D3E6;font-size:20px;line-height:1.2;font-weight:600">›</span>
+</div>
+<div style="display:{{ a.edDisp }};flex-wrap:wrap;gap:5px">
+<sc-for list="{{ a.edChips }}" as="e" hint-placeholder-count="1">
+<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:#FFF7E8;border:1px solid #F5DFAE;color:#8A6A1C;font-size:11px;font-weight:600"><span style="width:7px;height:7px;border-radius:50%;background:{{ e.color }}"></span>{{ e.label }}</span>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ isPack }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="준비물" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+<div style="font-family:'Jua',sans-serif;font-size:19px;color:#164A6B">{{ L.pack }}</div>
+<button onClick="{{ onAddPack }}" style="min-height:38px;padding:7px 16px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:12.5px;font-weight:700">{{ L.add }}</button>
+</div>
+<div style="font-size:12px;color:#8FAEC4;margin-top:-6px">{{ L.packHint }}</div>
+<div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
+<span style="font-weight:700;font-size:14.5px;color:#22597C">{{ L.shared }}</span>
+<span style="font-size:12px;color:#66A3E0;font-weight:600">{{ sharedProg }}</span>
+</div>
+<sc-for list="{{ sharedItems }}" as="p" hint-placeholder-count="7">
+<div style="background:#FFFFFF;border-radius:15px;padding:11px 13px;box-shadow:0 2px 10px rgba(60,130,190,.06);display:flex;align-items:center;gap:10px">
+<button onClick="{{ p.onCheck }}" style="width:30px;height:30px;flex:none;border-radius:50%;border:2px solid {{ p.ckBd }};background:{{ p.ckBg }};color:#FFFFFF;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">{{ p.ckMark }}</button>
+<div onClick="{{ p.onTap }}" style="flex:1;min-width:0;font-size:14.5px;font-weight:600;color:#22597C;text-decoration:{{ p.deco }};opacity:{{ p.op }};cursor:pointer">{{ p.name }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:45%;flex:none">
+<sc-for list="{{ p.asgChips }}" as="c" hint-placeholder-count="1">
+<span style="padding:4px 9px;border-radius:999px;background:{{ c.bg }};color:#FFFFFF;font-size:11px;font-weight:700">{{ c.label }}</span>
+</sc-for>
+</div>
+<div style="display:{{ p.edDisp }};gap:4px;flex:none;align-items:center">
+<sc-for list="{{ p.edChips }}" as="e" hint-placeholder-count="1">
+<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:#FFF7E8;border:1px solid #F5DFAE;color:#8A6A1C;font-size:10.5px;font-weight:600"><span style="width:6px;height:6px;border-radius:50%;background:{{ e.color }}"></span>{{ e.short }}</span>
+</sc-for>
+</div>
+<span style="flex:none;color:#C6DCEC;font-size:17px;line-height:1;font-weight:600">›</span>
+</div>
+</sc-for>
+<div style="display:flex;align-items:baseline;gap:8px;margin-top:6px">
+<span style="font-weight:700;font-size:14.5px;color:#22597C">{{ L.personal }}</span>
+<span style="font-size:12px;color:#66A3E0;font-weight:600">{{ personalProg }}</span>
+</div>
+<sc-for list="{{ personalItems }}" as="p" hint-placeholder-count="7">
+<div style="background:#FFFFFF;border-radius:15px;padding:11px 13px;box-shadow:0 2px 10px rgba(60,130,190,.06);display:flex;align-items:center;gap:10px">
+<button onClick="{{ p.onCheck }}" style="width:30px;height:30px;flex:none;border-radius:50%;border:2px solid {{ p.ckBd }};background:{{ p.ckBg }};color:#FFFFFF;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">{{ p.ckMark }}</button>
+<div onClick="{{ p.onTap }}" style="flex:1;min-width:0;font-size:14.5px;font-weight:600;color:#22597C;text-decoration:{{ p.deco }};opacity:{{ p.op }};cursor:pointer">{{ p.name }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:45%;flex:none">
+<sc-for list="{{ p.asgChips }}" as="c" hint-placeholder-count="1">
+<span style="padding:4px 9px;border-radius:999px;background:{{ c.bg }};color:#FFFFFF;font-size:11px;font-weight:700">{{ c.label }}</span>
+</sc-for>
+</div>
+<div style="display:{{ p.edDisp }};gap:4px;flex:none;align-items:center">
+<sc-for list="{{ p.edChips }}" as="e" hint-placeholder-count="1">
+<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:#FFF7E8;border:1px solid #F5DFAE;color:#8A6A1C;font-size:10.5px;font-weight:600"><span style="width:6px;height:6px;border-radius:50%;background:{{ e.color }}"></span>{{ e.short }}</span>
+</sc-for>
+</div>
+<span style="flex:none;color:#C6DCEC;font-size:17px;line-height:1;font-weight:600">›</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ isFood }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="맛집" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+<div style="font-family:'Jua',sans-serif;font-size:19px;color:#164A6B">{{ L.food }}</div>
+<button onClick="{{ onAddFood }}" style="min-height:38px;padding:7px 16px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:12.5px;font-weight:700">{{ L.add }}</button>
+</div>
+<div style="font-size:12px;color:#8FAEC4;margin-top:-6px">{{ L.foodHint }}</div>
+<sc-for list="{{ foodList }}" as="f" hint-placeholder-count="4">
+<div style="background:#FFFFFF;border-radius:16px;padding:14px 15px;box-shadow:0 3px 12px rgba(60,130,190,.07);display:flex;flex-direction:column;gap:9px">
+<div onClick="{{ f.onTap }}" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<span style="font-family:'Jua',sans-serif;font-size:16.5px;color:#1C4E70;line-height:1.3">{{ f.name }}</span>
+<span style="background:#E7F7F1;color:#1D9E7A;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px">{{ f.type }}</span>
+<a href="{{ f.link }}" target="_blank" rel="noopener" onClick="{{ stopProp }}" style="display:{{ f.linkDisp }};align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#EAF4FC;border:1px solid #C9E2F4;font-size:12px;text-decoration:none">🔗</a>
+</div>
+<div style="display:{{ f.memoDisp }};font-size:12.5px;color:#5A7D96;line-height:1.5">{{ f.memo }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;flex:none">
+<span style="color:#B8D3E6;font-size:20px;line-height:1.2;font-weight:600">›</span>
+</div>
+</div>
+<div style="display:{{ f.edDisp }};flex-wrap:wrap;gap:5px">
+<sc-for list="{{ f.edChips }}" as="e" hint-placeholder-count="1">
+<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:#FFF7E8;border:1px solid #F5DFAE;color:#8A6A1C;font-size:11px;font-weight:600"><span style="width:7px;height:7px;border-radius:50%;background:{{ e.color }}"></span>{{ e.label }}</span>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-top:1px solid #E1EFF8;display:{{ navDisp }};z-index:50">
+<sc-for list="{{ navs }}" as="n" hint-placeholder-count="4">
+<button onClick="{{ n.onTap }}" style="flex:1;min-height:60px;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 0 8px">
+<span style="font-family:'Material Symbols Rounded';font-size:26px;line-height:1;color:{{ n.fg }}">{{ n.icon }}</span>
+<span style="width:5px;height:5px;border-radius:50%;background:#0B7CD8;opacity:{{ n.dotOp }}"></span>
+</button>
+</sc-for>
+</div>
+<sc-if value="{{ profOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ onProfileClose }}" style="position:fixed;inset:0;background:rgba(10,50,80,.45);z-index:90;display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" style="width:100%;max-width:340px;background:#FFFFFF;border-radius:20px;padding:20px 18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(10,50,80,.3)">
+<div style="font-family:'Jua',sans-serif;font-size:18px;color:#164A6B;text-align:center">{{ L.prof }}</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ meChips }}" as="c" hint-placeholder-count="5">
+<button onClick="{{ c.onTap }}" style="min-height:50px;padding:10px 14px;border-radius:14px;border:1.5px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:10px;text-align:left"><span style="width:12px;height:12px;border-radius:50%;background:{{ c.dot }};flex:none"></span><span style="flex:1">{{ c.label }}</span><span style="display:{{ c.meDisp }};font-size:11.5px;font-weight:700">{{ L.current }}</span></button>
+</sc-for>
+</div>
+<button onClick="{{ onProfileClose }}" style="min-height:44px;border:1.5px solid #D5E7F3;border-radius:12px;background:#F7FCFF;color:#5A7D96;font-size:13.5px;font-weight:600">{{ L.close }}</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ onSheetClose }}" style="position:fixed;inset:0;background:rgba(10,50,80,.45);z-index:95;display:flex;align-items:flex-end;justify-content:center">
+<div onClick="{{ stopProp }}" style="width:100%;max-width:430px;background:#FFFFFF;border-radius:22px 22px 0 0;padding:20px 18px 28px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(10,50,80,.2)">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+<div style="font-family:'Jua',sans-serif;font-size:18px;color:#164A6B">{{ sheetTitle }}</div>
+<button onClick="{{ onSheetClose }}" style="width:32px;height:32px;border-radius:50%;border:none;background:#EFF6FB;color:#6B8BA3;font-size:14px;font-weight:700;padding:0">✕</button>
+</div>
+<input value="{{ fName }}" onChange="{{ onFName }}" onKeyDown="{{ onSheetKey }}" placeholder="{{ L.namePh }}" style="min-height:46px;border:1px solid #D5E7F3;border-radius:12px;padding:0 14px;font-size:14px;background:#F7FCFF;outline:none;color:#22597C">
+<input value="{{ fMemo }}" onChange="{{ onFMemo }}" onKeyDown="{{ onSheetKey }}" placeholder="{{ L.memoPh }}" style="display:{{ sheetMemoDisp }};min-height:46px;border:1px solid #D5E7F3;border-radius:12px;padding:0 14px;font-size:14px;background:#F7FCFF;outline:none;color:#22597C">
+<input value="{{ fLink }}" onChange="{{ onFLink }}" onKeyDown="{{ onSheetKey }}" placeholder="{{ L.linkPh }}" style="display:{{ sheetMemoDisp }};min-height:46px;border:1px solid #D5E7F3;border-radius:12px;padding:0 14px;font-size:14px;background:#F7FCFF;outline:none;color:#22597C">
+<div style="display:{{ sheetCatDisp }};gap:8px">
+<button onClick="{{ catShared }}" style="flex:1;min-height:46px;border:1.5px solid {{ catSharedBd }};border-radius:12px;background:{{ catSharedBg }};color:{{ catSharedFg }};font-size:13.5px;font-weight:600">{{ L.shared }}</button>
+<button onClick="{{ catPersonal }}" style="flex:1;min-height:46px;border:1.5px solid {{ catPersonalBd }};border-radius:12px;background:{{ catPersonalBg }};color:{{ catPersonalFg }};font-size:13.5px;font-weight:600">{{ L.personal }}</button>
+</div>
+<div style="display:{{ sheetAsgDisp }};flex-direction:column;gap:8px">
+<div style="font-size:12.5px;color:#7FA3BC;font-weight:600">{{ L.asg }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{ sheetAsgChips }}" as="c" hint-placeholder-count="5">
+<button onClick="{{ c.onTap }}" style="min-height:40px;padding:8px 13px;border-radius:999px;border:1.5px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font-size:13px;font-weight:600">{{ c.label }}</button>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;gap:8px">
+<button onClick="{{ onSheetDelete }}" style="display:{{ sheetDelDisp }};min-height:48px;padding:0 20px;border:1.5px solid #F3C1C1;border-radius:12px;background:#FFF5F5;color:#D25656;font-size:14px;font-weight:700;align-items:center;justify-content:center">{{ L.del }}</button>
+<button onClick="{{ onSheetSave }}" style="flex:1;min-height:48px;border:none;border-radius:12px;background:#0B7CD8;color:#FFFFFF;font-size:14.5px;font-weight:700">{{ sheetSaveLabel }}</button>
+</div>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  KEY = 'paros-trip-2026-v1';
+  normLink(u) { if (!u) return '#'; return /^https?:\/\//i.test(u) ? u : 'https://' + u; }
+  MEMBERS = [
+    {id:'m1',name:'石甜筒',color:'#E8503A'},
+    {id:'m2',name:'3ちゃん',color:'#F5A800'},
+    {id:'m3',name:'7ちゃん',color:'#1FAF6B'},
+    {id:'m4',name:'그르',color:'#2D8CFF'},
+    {id:'m5',name:'치반',color:'#A24BE8'}
+  ];
+  UI = {
+    ko:{resort:'한화리조트 대천 파로스',title:'대천 바다로 떠나요',dates:'2026. 8. 4 (화) – 8. 6 (목) · 2박 3일',
+      who:'누구세요?',whoSub:'이름을 선택하면 시작할 수 있어요',whoNote:'선택은 이 기기에 저장돼요 · 나중에 홈에서 바꿀 수 있어요',
+      mudTitle:'보령 머드축제 기간이에요!',mudBody1:'주중 체험존 13:00–18:00',mudBody2:'8/5(수)는 체험존 휴장 · 8/6(목)은 21:30까지 야간 운영',
+      weather:'여행 날씨',rain:'비',
+      stay:'숙소 정보',ci:'체크인',co:'체크아웃',room:'객실',roomV:'스위트 룸',addr:'주소',addrV:'충남 보령시 신흑동 해수욕장3길 11-10',fac:'시설',facV:'볼링장 · 게임존 · 노래방 · GS25',beach:'해변',beachV:'대천해수욕장 도보 약 5분',
+      roomBtn:'룸 정보 보기',siteBtn:'리조트 홈페이지',
+      act:'액티비티',add:'+ 추가',actHint:'카드를 누르면 수정할 수 있어요',
+      pack:'준비물',packHint:'항목을 누르면 수정 · 담당자 지정',shared:'공용',personal:'개인',
+      food:'맛집 · 카페',foodHint:'카드를 누르면 수정할 수 있어요',ppl:'명',
+      prof:'프로필 전환',current:'현재',close:'닫기',
+      link:'링크 열기',linkPh:'링크 (선택)',
+      namePh:'이름',memoPh:'메모 (선택)',asg:'담당자',del:'삭제'},
+    zh:{resort:'韩华度假村 大川帕罗斯',title:'一起去大川海边吧!',dates:'2026.8.4(周二) – 8.6(周四) · 2晚3天',
+      who:'你是谁?',whoSub:'选择名字后即可开始',whoNote:'选择保存在本机 · 之后可在首页更改',
+      mudTitle:'保宁泥浆节期间!',mudBody1:'工作日体验区 13:00–18:00',mudBody2:'8/5(周三)体验区闭馆 · 8/6(周四)夜间开放至21:30',
+      weather:'旅行天气',rain:'雨',
+      stay:'住宿信息',ci:'入住',co:'退房',room:'房型',roomV:'套房',addr:'地址',addrV:'忠南保宁市新黑洞海水浴场3街11-10',fac:'设施',facV:'保龄球馆 · 游戏区 · KTV · GS25',beach:'海滩',beachV:'步行约5分钟到大川海水浴场',
+      roomBtn:'查看房型信息',siteBtn:'度假村官网',
+      act:'活动',add:'+ 添加',actHint:'点击卡片即可编辑',
+      pack:'行李清单',packHint:'点条目可编辑并指定负责人',shared:'共用',personal:'个人',
+      food:'美食 · 咖啡',foodHint:'点击卡片即可编辑',ppl:'人',
+      prof:'切换用户',current:'当前',close:'关闭',
+      link:'打开链接',linkPh:'链接(选填)',
+      namePh:'名称',memoPh:'备注(选填)',asg:'负责人',del:'删除'}
+  };
+  ACT_DESC_ZH = {
+    a1:'工作日13–18点 · 8/5(周三)体验区闭馆 · 8/6(周四)夜间开放至21:30',
+    a2:'从度假村步行5分钟', a3:'务必确认潮汐时间', a4:'车程约20分钟 · 提前确认海路开启时间',
+    a5:'紧邻海水浴场 · 刺激担当', a6:'在海上轨道骑行的4人脚踏车', a7:'推荐提前预约度假村松林自助烧烤场',
+    a8:'海边的韩式传统庭院 · 推荐路线', a9:'雨天B计划 · 还有KTV', a10:'西海日落名所 · 晚上7点左右'
+  };
+  FOOD_MEMO_ZH = {f1:'现点现吃新鲜生鱼片', f2:'保宁名物牛角蛤+五花肉+蘑菇', f3:'看着大海吃晚餐', f4:'日落时分去最棒'};
+  FOOD_TYPE_ZH = {'회 · 조개구이':'生鱼片·烤贝','구이':'烤肉','회 · 오션뷰':'生鱼片·海景','카페':'咖啡厅','추가':'添加','기타':'其他'};
+  WDESC_ZH = {'맑음':'晴','대체로 맑음':'大体晴朗','흐림':'阴','안개':'雾','이슬비':'毛毛雨','비':'雨','눈':'雪','소나기':'阵雨','뇌우':'雷雨','무덥고 습함':'闷热潮湿','소나기 가능':'可能有阵雨'};
+  defaults() {
+    return {
+      tab:'home', me:null, lang:'ko', copied:false, sync:'connecting', presTick:0,
+      sheet:null, fName:'', fMemo:'', fCat:'shared', fAsg:[],
+      weather:null, weatherStatus:'loading',
+      activities:[
+        {id:'a1',name:'보령 머드축제',zh:'保宁泥浆节',desc:'주중 13–18시 · 8/5(수) 체험존 휴장 · 8/6(목) 21:30까지 야간 운영',votes:[]},
+        {id:'a2',name:'대천해수욕장 물놀이',zh:'大川海水浴场玩水',desc:'리조트에서 도보 5분',votes:[]},
+        {id:'a3',name:'갯벌 체험',zh:'赶海·滩涂体验',desc:'물때 시간 확인 필수',votes:[]},
+        {id:'a4',name:'무창포 신비의 바닷길',zh:'武昌浦神秘海路',desc:'차로 약 20분 · 바닷길 열리는 시간 미리 확인',votes:[]},
+        {id:'a5',name:'대천 짚트랙',zh:'高空滑索',desc:'해수욕장 바로 옆 · 스릴 담당',votes:[]},
+        {id:'a6',name:'대천스카이바이크',zh:'海上天空脚踏车',desc:'바다 위 레일을 달리는 4인승 바이크',votes:[]},
+        {id:'a7',name:'바베큐 + 불멍',zh:'烧烤+篝火',desc:'리조트 송림 셀프 바비큐장 사전 예약 추천',votes:[]},
+        {id:'a8',name:'죽도 상화원',zh:'竹岛尚和园',desc:'바다 옆 한국식 전통 정원 · 추천 코스',votes:[]},
+        {id:'a9',name:'리조트 볼링·게임존',zh:'度假村保龄球·游戏区',desc:'비 오는 날 플랜 B · 노래방도 있음',votes:[]},
+        {id:'a10',name:'노을 해변 산책',zh:'日落海边散步',desc:'서해 노을 명당 · 저녁 7시대',votes:[]}
+      ],
+      packing:[
+        {id:'p1',name:'숯 · 그릴 용품',zh:'木炭·烧烤用具',cat:'shared',assignees:[],checked:false},
+        {id:'p2',name:'아이스박스 · 음료',zh:'保温箱·饮料',cat:'shared',assignees:[],checked:false},
+        {id:'p3',name:'블루투스 스피커',zh:'蓝牙音箱',cat:'shared',assignees:[],checked:false},
+        {id:'p4',name:'보드게임 · 카드',zh:'桌游·扑克牌',cat:'shared',assignees:[],checked:false},
+        {id:'p5',name:'상비약',zh:'常备药',cat:'shared',assignees:[],checked:false},
+        {id:'p6',name:'튜브 · 방수팩',zh:'游泳圈·防水袋',cat:'shared',assignees:[],checked:false},
+        {id:'p7',name:'멀티탭',zh:'插线板',cat:'shared',assignees:[],checked:false},
+        {id:'p8',name:'수영복',zh:'泳衣',cat:'personal',assignees:[],checked:false},
+        {id:'p9',name:'여벌 옷 (머드용 넉넉히)',zh:'换洗衣物(泥浆节多带)',cat:'personal',assignees:[],checked:false},
+        {id:'p10',name:'선크림',zh:'防晒霜',cat:'personal',assignees:[],checked:false},
+        {id:'p11',name:'모자 · 선글라스',zh:'帽子·墨镜',cat:'personal',assignees:[],checked:false},
+        {id:'p12',name:'슬리퍼',zh:'拖鞋',cat:'personal',assignees:[],checked:false},
+        {id:'p13',name:'세면도구',zh:'洗漱用品',cat:'personal',assignees:[],checked:false},
+        {id:'p14',name:'충전기 · 보조배터리',zh:'充电器·充电宝',cat:'personal',assignees:[],checked:false}
+      ],
+      foods:[
+        {id:'f1',name:'대천항 수산시장',zh:'大川港水产市场',type:'회 · 조개구이',memo:'싱싱한 회 떠서 바로 먹기',likes:[]},
+        {id:'f2',name:'키조개 삼합',zh:'牛角蛤三合烤肉',type:'구이',memo:'보령 명물 키조개+삼겹살+버섯',likes:[]},
+        {id:'f3',name:'스카이 횟집 (리조트 16층)',zh:'度假村16楼海景餐厅',type:'회 · 오션뷰',memo:'바다 보며 저녁 한 끼',likes:[]},
+        {id:'f4',name:'해변 오션뷰 카페',zh:'海景咖啡厅',type:'카페',memo:'노을 시간에 가면 최고',likes:[]}
+      ]
+    };
+  }
+  state = this.load();
+  load() {
+    const d = this.defaults();
+    try { d.lang = localStorage.getItem('paros-lang') === 'zh' ? 'zh' : 'ko'; } catch(e) {}
+    try {
+      const s = localStorage.getItem(this.KEY);
+      if (s) { const j = JSON.parse(s); return {...d, me:j.me||null, activities:j.activities||d.activities, packing:j.packing||d.packing, foods:j.foods||d.foods}; }
+    } catch(e) {}
+    return d;
+  }
+  save(next) {
+    this.setState(next, () => {
+      try {
+        const s = this.state;
+        localStorage.setItem(this.KEY, JSON.stringify({me:s.me, activities:s.activities, packing:s.packing, foods:s.foods}));
+      } catch(e) {}
+      this.pushSoon();
+    });
+  }
+  devId() {
+    let d = null;
+    try { d = localStorage.getItem('paros-dev'); } catch(e) {}
+    if (!d) { d = Math.random().toString(36).slice(2, 10); try { localStorage.setItem('paros-dev', d); } catch(e) {} }
+    return d;
+  }
+  setRoom(id) {
+    this.roomId = id;
+    try { localStorage.setItem('paros-room', id); } catch(e) {}
+    try { if (!(location.hash || '').includes(id)) history.replaceState(null, '', '#room=' + id); } catch(e) {}
+    this.forceUpdate();
+  }
+  ROOM = 'paros-daecheon-2026-x7k3q9';
+  async initSync() {
+    this.docTs = 0; this.presence = {};
+    const m = (location.hash || '').match(/room=([A-Za-z0-9-]+)/);
+    this.setRoom(m ? m[1] : this.ROOM);
+    const ok = await this.pull(true);
+    if (!ok) await this.pushNow();
+    this.pollTimer = setInterval(() => { if (!document.hidden) this.pull(); }, 2000);
+    this.beatTimer = setInterval(() => this.heartbeat(), 15000);
+  }
+  touch(id) { this.myEd = {id, ts:Date.now()}; this.pushSoon(); }
+  async pull(first) {
+    if (!this.roomId || this.pushing) return false;
+    try {
+      const r = await fetch('https://textdb.online/' + this.roomId);
+      if (!r.ok) throw 0;
+      const txt = (await r.text()).trim();
+      if (!txt) return false;
+      const d = JSON.parse(txt);
+      if (!d || !Array.isArray(d.activities)) throw 0;
+      this.presence = d.presence || {};
+      if ((d.updatedAt || 0) > (this.docTs || 0) && !this.pendingPush) {
+        this.docTs = d.updatedAt || 0;
+        this.setState({activities:d.activities, packing:Array.isArray(d.packing)?d.packing:this.state.packing, foods:Array.isArray(d.foods)?d.foods:this.state.foods, sync:'live', presTick:Date.now()});
+        try { localStorage.setItem(this.KEY, JSON.stringify({me:this.state.me, activities:d.activities, packing:d.packing, foods:d.foods})); } catch(e) {}
+      } else this.setState({sync:'live', presTick:Date.now()});
+      return true;
+    } catch(e) { if (!first) this.setState({sync:'error'}); return false; }
+  }
+  pushSoon() {
+    if (this.state.sync === 'local') return;
+    this.pendingPush = true;
+    clearTimeout(this._pt);
+    this._pt = setTimeout(() => this.pushNow(), 500);
+  }
+  async pushNow() {
+    this.pendingPush = false;
+    if (!this.roomId || this.state.sync === 'local') return;
+    this.pushing = true;
+    const now = Date.now(), s = this.state;
+    const pres = {...(this.presence || {})};
+    pres[this.devId()] = {mid:s.me, ts:now, tab:s.tab, ed:(this.myEd && now - this.myEd.ts < 12000) ? this.myEd.id : null, edTs:this.myEd ? this.myEd.ts : 0};
+    Object.keys(pres).forEach(k => { if (now - (pres[k].ts || 0) > 120000) delete pres[k]; });
+    this.presence = pres;
+    try {
+      const doc = encodeURIComponent(JSON.stringify({activities:s.activities, packing:s.packing, foods:s.foods, presence:pres, updatedAt:now}));
+      const r = await fetch('https://textdb.online/update/?key=' + encodeURIComponent(this.roomId) + '&value=' + doc);
+      if (!r.ok) throw 0;
+      this.docTs = now;
+      this.setState({sync:'live'});
+    } catch(e) { this.setState({sync:'error'}); }
+    this.pushing = false;
+  }
+  async heartbeat() {
+    if (document.hidden || !this.roomId || this.state.sync === 'local') return;
+    await this.pull();
+    this.pushNow();
+  }
+  componentWillUnmount() {
+    clearInterval(this.pollTimer); clearInterval(this.beatTimer); clearTimeout(this._pt);
+  }
+  async componentDidMount() {
+    this.initSync();
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=36.32&longitude=126.51&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSeoul&start_date=2026-08-04&end_date=2026-08-06');
+      const d = await r.json();
+      const dd = d && d.daily;
+      if (dd && dd.time && dd.temperature_2m_max && dd.temperature_2m_max[0] != null) {
+        this.setState({
+          weather: dd.time.map((t,i) => ({
+            date:'8/'+(4+i),
+            hi:Math.round(dd.temperature_2m_max[i]), lo:Math.round(dd.temperature_2m_min[i]),
+            pp:(dd.precipitation_probability_max && dd.precipitation_probability_max[i] != null ? dd.precipitation_probability_max[i] : '–')+'%',
+            desc:this.codeDesc(dd.weather_code ? dd.weather_code[i] : null)
+          })),
+          weatherStatus:'live'
+        });
+        return;
+      }
+    } catch(e) {}
+    this.setState({weatherStatus:'avg'});
+  }
+  codeDesc(c) {
+    if (c == null) return '—';
+    if (c === 0) return '맑음'; if (c <= 2) return '대체로 맑음'; if (c === 3) return '흐림';
+    if (c <= 48) return '안개'; if (c <= 57) return '이슬비'; if (c <= 67) return '비';
+    if (c <= 77) return '눈'; if (c <= 82) return '소나기'; return '뇌우';
+  }
+  mkChips(sel, onToggle) {
+    return this.MEMBERS.map(m => {
+      const on = sel.includes(m.id);
+      return {key:m.id, label:m.name, bg:on?m.color:'#EFF6FB', fg:on?'#FFFFFF':'#6B8BA3', bd:on?m.color:'#DCEAF4', onTap:() => onToggle(m.id)};
+    });
+  }
+  toggleIn(listKey, id, field, mid) {
+    this.myEd = {id, ts:Date.now()};
+    const list = this.state[listKey].map(it => it.id === id ? {...it, [field]: it[field].includes(mid) ? it[field].filter(x => x !== mid) : [...it[field], mid]} : it);
+    this.save({[listKey]: list});
+  }
+  delItem(listKey, id) {
+    this.save({[listKey]: this.state[listKey].filter(it => it.id !== id)});
+  }
+  renderVals() {
+    const S = this.state;
+    const zh = S.lang === 'zh';
+    const L = this.UI[zh ? 'zh' : 'ko'];
+    const today = new Date(); const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const start = new Date(2026,7,4), end = new Date(2026,7,6);
+    const diff = Math.round((start - t0) / 86400000);
+    const ddayLabel = diff > 0 ? 'D-'+diff : (t0 <= end ? (zh?'旅行中!':'여행 중!') : (zh?'旅行结束':'여행 완료'));
+    const nowP = Date.now(); const pres = this.presence || {};
+    const mine = this.devId();
+    const edFor = id => {
+      const out = [];
+      Object.keys(pres).forEach(k => {
+        if (k === mine) return;
+        const p = pres[k];
+        if (p.ed === id && nowP - (p.edTs || 0) < 15000) {
+          const m = this.MEMBERS.find(x => x.id === p.mid);
+          const nm = m ? m.name : (zh?'有人':'누군가');
+          out.push({label:nm + (zh?' 修改中':' 수정 중'), short:nm, color:m ? m.color : '#8AA5B8'});
+        }
+      });
+      return out;
+    };
+    const acts = S.activities.map(a => {
+      const desc = zh ? (this.ACT_DESC_ZH[a.id] || a.desc || '') : (a.desc || '');
+      return {
+        id:a.id, name:(zh && a.zh) ? a.zh : a.name, desc,
+        descDisp:desc?'block':'none',
+        link:this.normLink(a.link), linkDisp:a.link?'inline-flex':'none',
+        edChips:edFor(a.id), edDisp:edFor(a.id).length ? 'flex' : 'none',
+        onTap:() => openEdit('activities', a)
+      };
+    });
+    const packRow = p => {
+      const personal = p.cat === 'personal';
+      const ck = personal ? (p.checkedBy || []).includes(S.me) : !!p.checked;
+      return {
+        id:p.id, name:(zh && p.zh) ? p.zh : p.name,
+        deco:'none', op:1,
+        ckBd:ck?'#23BD94':'#C3DCEC', ckBg:ck?'#23BD94':'#FFFFFF', ckMark:ck?'✓':'',
+        onCheck:() => {
+          this.myEd = {id:p.id, ts:Date.now()};
+          this.save({packing:this.state.packing.map(it => {
+            if (it.id !== p.id) return it;
+            if (personal) { const cb = it.checkedBy || []; return {...it, checkedBy:cb.includes(S.me) ? cb.filter(x => x !== S.me) : [...cb, S.me]}; }
+            return {...it, checked:!it.checked};
+          })});
+        },
+        edChips:edFor(p.id), edDisp:edFor(p.id).length ? 'flex' : 'none',
+        asgChips:personal ? [] : (p.assignees || []).map(id => { const m = this.MEMBERS.find(x => x.id === id); return m ? {label:m.name, bg:m.color} : null; }).filter(Boolean),
+        onTap:() => openEdit('packing', p)
+      };
+    };
+    const shared = S.packing.filter(p => p.cat === 'shared'), personal = S.packing.filter(p => p.cat === 'personal');
+    const foodList = S.foods.map(f => {
+      const memo = zh ? (this.FOOD_MEMO_ZH[f.id] || f.memo || '') : (f.memo || '');
+      return {
+        id:f.id, name:(zh && f.zh) ? f.zh : f.name,
+        type:zh ? (this.FOOD_TYPE_ZH[f.type] || f.type || '其他') : (f.type || '기타'),
+        memo, memoDisp:memo?'block':'none',
+        link:this.normLink(f.link), linkDisp:f.link?'inline-flex':'none',
+        edChips:edFor(f.id), edDisp:edFor(f.id).length ? 'flex' : 'none',
+        onTap:() => openEdit('foods', f)
+      };
+    });
+    const navs = [['home','home'],['act','surfing'],['pack','checklist'],['food','restaurant']].map(([t,icon]) => {
+      const on = S.tab === t;
+      return {key:t, icon, fg:on?'#0B7CD8':'#8AA5B8', dotOp:on?1:0, onTap:() => { this.setState({tab:t}); this.pushSoon(); }};
+    });
+    const openAdd = list => this.setState({sheet:{mode:'add', list}, fName:'', fMemo:'', fLink:'', fCat:'shared', fAsg:[]});
+    const openEdit = (list, it) => {
+      this.touch(it.id);
+      this.setState({sheet:{mode:'edit', list, id:it.id}, fName:it.name, fMemo:list === 'activities' ? (it.desc || '') : list === 'foods' ? (it.memo || '') : '', fLink:it.link || '', fCat:it.cat || 'shared', fAsg:it.assignees ? [...it.assignees] : []});
+    };
+    const sheetSave = () => {
+      const st = this.state, sh = st.sheet; if (!sh) return;
+      const n = st.fName.trim(); if (!n) return;
+      const memo = st.fMemo.trim(), cat = st.fCat, link = (st.fLink || '').trim();
+      if (sh.mode === 'add') {
+        if (sh.list === 'activities') this.save({activities:[...st.activities, {id:'x'+Date.now(), name:n, zh:'', desc:memo, link, votes:[]}], sheet:null});
+        else if (sh.list === 'packing') this.save({packing:[...st.packing, {id:'x'+Date.now(), name:n, zh:'', cat, assignees:st.fAsg || [], checked:false}], sheet:null});
+        else this.save({foods:[...st.foods, {id:'x'+Date.now(), name:n, zh:'', type:'추가', memo, link, likes:[]}], sheet:null});
+      } else {
+        const upd = it => {
+          if (it.id !== sh.id) return it;
+          const zn = it.name === n ? it.zh : '';
+          if (sh.list === 'activities') return {...it, name:n, zh:zn, desc:memo, link};
+          if (sh.list === 'foods') return {...it, name:n, zh:zn, memo, link};
+          return {...it, name:n, zh:zn, cat, assignees:st.fAsg || []};
+        };
+        this.save({[sh.list]: st[sh.list].map(upd), sheet:null});
+      }
+    };
+    const koDays = ['화','수','목'], zhDays = ['周二','周三','周四'];
+    const fallback = [
+      {date:'8/4', hi:30, lo:24, pp:'40%', desc:'무덥고 습함'},
+      {date:'8/5', hi:30, lo:24, pp:'40%', desc:'소나기 가능'},
+      {date:'8/6', hi:31, lo:25, pp:'30%', desc:'대체로 맑음'}
+    ];
+    const weatherDays = (S.weather || fallback).map((w,i) => ({
+      ...w, date:w.date + ' (' + (zh ? (zhDays[i]||'') : (koDays[i]||'')) + ')',
+      desc:zh ? (this.WDESC_ZH[w.desc] || w.desc) : w.desc
+    }));
+    const setLang = l => { this.setState({lang:l}); try { localStorage.setItem('paros-lang', l); } catch(e) {} };
+    const listsKo = {activities:'액티비티', packing:'준비물', foods:'맛집·카페'};
+    const listsZh = {activities:'活动', packing:'行李', foods:'美食·咖啡'};
+    return {
+      L, ddayLabel,
+      onKo:() => setLang('ko'), onZh:() => setLang('zh'),
+      koBg:zh?'transparent':'#FFFFFF', koFg:zh?'#EAF7FF':'#0B7CD8',
+      zhBg:zh?'#FFFFFF':'transparent', zhFg:zh?'#0B7CD8':'#EAF7FF',
+      noMe:!S.me, navDisp:S.me?'flex':'none',
+      profOpen:!!S.profileOpen, profBtnDisp:S.me?'flex':'none',
+      onProfile:() => this.setState({profileOpen:true}),
+      onProfileClose:() => this.setState({profileOpen:false}),
+      stopProp:e => e.stopPropagation(),
+      myInitial:(this.MEMBERS.find(m => m.id === S.me) || {name:'?'}).name.slice(0,1),
+      myColor:(this.MEMBERS.find(m => m.id === S.me) || {color:'#8AA5B8'}).color,
+      isHome:!!S.me && S.tab==='home', isAct:!!S.me && S.tab==='act', isPack:!!S.me && S.tab==='pack', isFood:!!S.me && S.tab==='food',
+      navs, acts, foodList,
+      sharedItems:shared.map(packRow), personalItems:personal.map(packRow),
+      sharedProg:shared.filter(p=>p.checked).length+'/'+shared.length+(zh?' 完成':' 완료'),
+      personalProg:personal.filter(p => (p.checkedBy || []).includes(S.me)).length+'/'+personal.length+(zh?' 完成 · 按我的勾选':' 완료 · 내 기준'),
+      weatherDays,
+      weatherNote:S.weatherStatus==='live' ? (zh?'大川海水浴场实时预报 (Open-Meteo)':'대천해수욕장 기준 실시간 예보 (Open-Meteo)') : S.weatherStatus==='loading' ? (zh?'正在加载预报…':'예보 불러오는 중…') : (zh?'尚未有实际预报，先按8月初往年水平显示 · 出发前两周左右会自动切换为实际预报':'아직 실제 예보 전이라 8월 초 평년 수준으로 표시 중 · 출발 2주 전쯤부터 자동으로 실제 예보로 바뀌어요'),
+      meChips:this.MEMBERS.map(m => {
+        const on = S.me === m.id;
+        return {id:m.id, label:m.name, dot:on?'#FFFFFF':m.color, bg:on?m.color:'#FFFFFF', fg:on?'#FFFFFF':'#33546B', bd:on?m.color:'#D5E7F3', meDisp:on?'inline':'none', onTap:() => { this.save({me:m.id}); this.setState({profileOpen:false}); }};
+      }),
+      onAddAct:() => openAdd('activities'), onAddPack:() => openAdd('packing'), onAddFood:() => openAdd('foods'),
+      sheetOpen:!!S.sheet,
+      sheetTitle:S.sheet ? ((zh ? listsZh : listsKo)[S.sheet.list] + (S.sheet.mode === 'add' ? (zh?' 添加':' 추가') : (zh?' 编辑':' 수정'))) : '',
+      sheetMemoDisp:S.sheet && S.sheet.list !== 'packing' ? 'block' : 'none',
+      sheetCatDisp:S.sheet && S.sheet.list === 'packing' ? 'flex' : 'none',
+      sheetAsgDisp:S.sheet && S.sheet.list === 'packing' && S.fCat === 'shared' ? 'flex' : 'none',
+      sheetDelDisp:S.sheet && S.sheet.mode === 'edit' ? 'flex' : 'none',
+      sheetSaveLabel:S.sheet && S.sheet.mode === 'add' ? (zh?'添加':'추가') : (zh?'保存':'저장'),
+      fName:S.fName, fMemo:S.fMemo, fLink:S.fLink || '',
+      onFName:e => this.setState({fName:e.target.value}),
+      onFMemo:e => this.setState({fMemo:e.target.value}),
+      onFLink:e => this.setState({fLink:e.target.value}),
+      onSheetKey:e => { if (e.key === 'Enter') sheetSave(); },
+      onSheetSave:sheetSave,
+      onSheetDelete:() => { const sh = this.state.sheet; if (sh && sh.mode === 'edit') { this.delItem(sh.list, sh.id); this.setState({sheet:null}); } },
+      onSheetClose:() => this.setState({sheet:null}),
+      sheetAsgChips:this.mkChips(S.fAsg || [], mid => { const cur = this.state.fAsg || []; this.setState({fAsg:cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid]}); }),
+      catShared:() => this.setState({fCat:'shared'}),
+      catPersonal:() => this.setState({fCat:'personal'}),
+      catSharedBg:S.fCat==='shared'?'#0B7CD8':'#FFFFFF', catSharedFg:S.fCat==='shared'?'#FFFFFF':'#5A7D96', catSharedBd:S.fCat==='shared'?'#0B7CD8':'#D5E7F3',
+      catPersonalBg:S.fCat==='personal'?'#0B7CD8':'#FFFFFF', catPersonalFg:S.fCat==='personal'?'#FFFFFF':'#5A7D96', catPersonalBd:S.fCat==='personal'?'#0B7CD8':'#D5E7F3'
+    };
+  }
+}
+</script>
+</body>
+</html>
