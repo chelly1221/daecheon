@@ -4,6 +4,7 @@ import type { Lang } from '../types';
 import type { FoodView } from '../viewmodels';
 import AutoText from './AutoText';
 import CommentBadge from './CommentBadge';
+import LinkIcon from './LinkIcon';
 
 interface Props {
   L: UIStrings;
@@ -54,19 +55,7 @@ export default function FoodTab({ L, lang, foods, onAdd }: Props) {
                 >
                   {f.type}
                 </span>
-                {f.linkShow && (
-                  <a
-                    href={f.link}
-                    target="_blank"
-                    rel="noopener"
-                    onClick={(e) => e.stopPropagation()}
-                    style={css(
-                      'display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#EAF4FC;border:1px solid #C9E2F4;font-size:12px;text-decoration:none',
-                    )}
-                  >
-                    🔗
-                  </a>
-                )}
+                {f.linkShow && <LinkIcon href={f.link} />}
               </div>
               {f.memoShow && (
                 <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>

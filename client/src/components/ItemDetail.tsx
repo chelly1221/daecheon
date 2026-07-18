@@ -4,6 +4,7 @@ import { css } from '../css';
 import type { UIStrings } from '../i18n';
 import type { Lang } from '../types';
 import AutoText, { useTranslated } from './AutoText';
+import LinkIcon from './LinkIcon';
 
 /** The quoted parent shown above a reply bubble. */
 export interface ReplyQuote {
@@ -217,18 +218,7 @@ export default function ItemDetail({
                   {typeLabel}
                 </span>
               )}
-              {linkShow && (
-                <a
-                  href={link}
-                  target="_blank"
-                  rel="noopener"
-                  style={css(
-                    'display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#EAF4FC;border:1px solid #C9E2F4;font-size:11px;text-decoration:none',
-                  )}
-                >
-                  🔗
-                </a>
-              )}
+              {linkShow && <LinkIcon href={link} />}
             </div>
             {!!meta && (
               <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>

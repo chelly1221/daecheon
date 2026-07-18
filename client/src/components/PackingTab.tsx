@@ -18,10 +18,10 @@ interface Props {
   onAdd: () => void;
 }
 
-// Filter selection for the shared list: 'all' (전체보기), 'unassigned' (미지정),
-// or a member id (that assignee's items).
+// Shared-list filter: 전체보기 (all assigned) or a member id (their items). The
+// unassigned group is always shown as well (top in 전체보기, below in a member
+// view), never a filter of its own.
 const ALL = 'all';
-const UNASSIGNED = 'unassigned';
 
 export default function PackingTab({
   L,
@@ -35,31 +35,82 @@ export default function PackingTab({
   onAdd,
 }: Props) {
   const [filter, setFilter] = useState<string>(ALL);
-  // Guard a stale selection (e.g. the member lost all their items via sync, or
-  // no unassigned items remain) back to 전체보기 instead of an empty list.
-  const valid =
-    filter === ALL ||
-    (filter === UNASSIGNED && sharedUnassigned.length > 0) ||
-    asgTabs.some((t) => t.id === filter);
-  const active = valid ? filter : ALL;
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
 
-  const memberItems = (id: string) => sharedAssigned.filter((p) => p.assigneeIds.includes(id));
+  // Guard a stale member selection (they lost all their items via sync) back to
+  // 전체보기 instead of showing an empty list.
+  const active = filter === ALL || asgTabs.some((t) => t.id === filter) ? filter : ALL;
+  const q = query.trim().toLowerCase();
+  const match = (p: PackView) => !q || p.name.toLowerCase().includes(q);
+
   const showFilter = sharedAssigned.length > 0; // nothing assigned → no filter row
+  const assignedBase =
+    active === ALL ? sharedAssigned : sharedAssigned.filter((p) => p.assigneeIds.includes(active));
+  const assignedShown = assignedBase.filter(match);
+  const unassignedShown = sharedUnassigned.filter(match);
+  const personalShown = personalItems.filter(match);
+
+  const rows = (list: PackView[]) => list.map((p) => <PackRow key={p.id} p={p} lang={lang} />);
+  const label = (text: string, n?: number) => (
+    <div style={css('display:flex;align-items:baseline;gap:6px;margin-top:2px')}>
+      <span style={css('font-size:12px;font-weight:700;color:#5B87A6')}>{text}</span>
+      {n !== undefined && (
+        <span style={css('font-size:11.5px;color:#9BB6CC;font-weight:600')}>{n}</span>
+      )}
+    </div>
+  );
+  const unassignedBlock = unassignedShown.length > 0 && (
+    <>
+      {showFilter && label(L.unassigned, unassignedShown.length)}
+      {rows(unassignedShown)}
+    </>
+  );
 
   return (
     <div data-screen-label="준비물" style={css('display:flex;flex-direction:column;gap:9px')}>
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>
         <div style={css("font-family:'Jua',sans-serif;font-size:19px;color:#164A6B")}>{L.pack}</div>
-        <button
-          onClick={onAdd}
-          style={css(
-            'min-height:36px;padding:6px 15px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:12.5px;font-weight:700',
-          )}
-        >
-          {L.add}
-        </button>
+        <div style={css('display:flex;align-items:center;gap:7px;flex:none')}>
+          <button
+            onClick={() => {
+              setSearchOpen((o) => {
+                if (o) setQuery('');
+                return !o;
+              });
+            }}
+            aria-label={L.searchPh}
+            style={css(
+              `width:36px;height:36px;border-radius:11px;border:1px solid ${searchOpen ? '#0B7CD8' : '#DCEAF4'};background:${searchOpen ? '#0B7CD8' : '#FFFFFF'};color:${searchOpen ? '#FFFFFF' : '#0B7CD8'};font-family:'Material Symbols Rounded';font-size:20px;display:flex;align-items:center;justify-content:center;padding:0`,
+            )}
+          >
+            {searchOpen ? 'close' : 'search'}
+          </button>
+          <button
+            onClick={onAdd}
+            style={css(
+              'min-height:36px;padding:6px 15px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:12.5px;font-weight:700',
+            )}
+          >
+            {L.add}
+          </button>
+        </div>
       </div>
-      <div style={css('font-size:12px;color:#8FAEC4;margin-top:-4px')}>{L.packHint}</div>
+
+      {searchOpen ? (
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onTouchStart={(e) => e.stopPropagation()}
+          placeholder={L.searchPh}
+          style={css(
+            'width:100%;box-sizing:border-box;min-height:40px;padding:9px 13px;border-radius:12px;border:1px solid #D5E7F3;background:#FFFFFF;font-size:14px;color:#22597C;outline:none',
+          )}
+        />
+      ) : (
+        <div style={css('font-size:12px;color:#8FAEC4;margin-top:-4px')}>{L.packHint}</div>
+      )}
 
       <div style={css('display:flex;align-items:baseline;gap:8px;margin-top:2px')}>
         <span style={css('font-weight:700;font-size:14.5px;color:#22597C')}>{L.shared}</span>
@@ -70,7 +121,7 @@ export default function PackingTab({
         <div style={css('display:flex;flex-wrap:wrap;gap:6px')}>
           <FilterTab
             label={L.filterAll}
-            count={sharedAssigned.length + sharedUnassigned.length}
+            count={sharedAssigned.length}
             color="#0B7CD8"
             on={active === ALL}
             onTap={() => setFilter(ALL)}
@@ -85,51 +136,33 @@ export default function PackingTab({
               onTap={() => setFilter((cur) => (cur === t.id ? ALL : t.id))}
             />
           ))}
-          {sharedUnassigned.length > 0 && (
-            <FilterTab
-              label={L.unassigned}
-              count={sharedUnassigned.length}
-              color="#8AA5B8"
-              on={active === UNASSIGNED}
-              onTap={() => setFilter((cur) => (cur === UNASSIGNED ? ALL : UNASSIGNED))}
-            />
-          )}
         </div>
       )}
 
-      {/* Shared rows for the active filter. In 전체보기, assigned come first and
-          the still-unassigned are grouped under a divider. */}
-      {active === ALL &&
-        (showFilter ? (
-          <>
-            {sharedAssigned.map((p) => (
-              <PackRow key={p.id} p={p} lang={lang} />
-            ))}
-            {sharedUnassigned.length > 0 && (
-              <div style={css('font-size:12px;font-weight:700;color:#5B87A6;margin-top:2px')}>
-                {L.unassigned}
-              </div>
-            )}
-            {sharedUnassigned.map((p) => (
-              <PackRow key={p.id} p={p} lang={lang} />
-            ))}
-          </>
-        ) : (
-          sharedUnassigned.map((p) => <PackRow key={p.id} p={p} lang={lang} />)
-        ))}
-      {active === UNASSIGNED &&
-        sharedUnassigned.map((p) => <PackRow key={p.id} p={p} lang={lang} />)}
-      {active !== ALL &&
-        active !== UNASSIGNED &&
-        memberItems(active).map((p) => <PackRow key={p.id} p={p} lang={lang} />)}
+      {active === ALL ? (
+        <>
+          {unassignedBlock}
+          {assignedShown.length > 0 && unassignedShown.length > 0 && label(L.assigned)}
+          {rows(assignedShown)}
+        </>
+      ) : (
+        <>
+          {rows(assignedShown)}
+          {unassignedBlock}
+        </>
+      )}
 
       <div style={css('display:flex;align-items:baseline;gap:8px;margin-top:6px')}>
         <span style={css('font-weight:700;font-size:14.5px;color:#22597C')}>{L.personal}</span>
         <span style={css('font-size:12px;color:#66A3E0;font-weight:600')}>{personalProg}</span>
       </div>
-      {personalItems.map((p) => (
-        <PackRow key={p.id} p={p} lang={lang} />
-      ))}
+      {rows(personalShown)}
+
+      {q && assignedShown.length + unassignedShown.length + personalShown.length === 0 && (
+        <div style={css('font-size:12.5px;color:#9BB6CC;text-align:center;padding:14px 0')}>
+          {L.noResult}
+        </div>
+      )}
     </div>
   );
 }
@@ -157,7 +190,9 @@ function FilterTab({
             : 'background:#EFF6FB;color:#5B87A6;border:1px solid #DCEAF4'),
       )}
     >
-      {!on && <span style={css(`width:7px;height:7px;border-radius:50%;background:${color}`)} />}
+      {/* Dot is always present (white when selected) so selecting a tab doesn't
+          change its width and shuffle the row. */}
+      <span style={css(`width:7px;height:7px;border-radius:50%;background:${on ? '#FFFFFF' : color}`)} />
       {label}
       <span
         style={css(

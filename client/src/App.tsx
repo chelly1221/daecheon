@@ -112,6 +112,7 @@ export default function App() {
   const [fLink, setFLink] = useState('');
   const [fCat, setFCat] = useState<'shared' | 'personal'>('shared');
   const [fAsg, setFAsg] = useState<string[]>([]);
+  const [slideDir, setSlideDir] = useState(0); // tab-change direction for the slide anim
 
   const { days, status: weatherStatus } = useWeather();
   const sync = useSync({
@@ -186,6 +187,9 @@ export default function App() {
     sync.pushSoon({ silent: true });
   };
   const changeTab = (t: Tab) => {
+    const oi = TAB_ORDER.indexOf(tab);
+    const ni = TAB_ORDER.indexOf(t);
+    setSlideDir(ni < oi ? -1 : 1);
     setTab(t);
     sync.pushSoon({ silent: true });
   };
@@ -656,26 +660,40 @@ export default function App() {
         />
         <div
           style={css(
-            'position:relative;margin-top:-22px;border-radius:22px 22px 0 0;background:#F2F9FE;padding:14px 16px 88px;display:flex;flex-direction:column;gap:10px',
+            'position:relative;margin-top:-22px;border-radius:22px 22px 0 0;background:#F2F9FE;padding:14px 16px 88px;display:flex;flex-direction:column;gap:10px;overflow-x:clip',
           )}
         >
           {!me && <StartScreen L={L} meChips={meChips} />}
-          {isHome && <HomeTab L={L} weatherDays={weatherDays} weatherNote={weatherNote} />}
-          {isAct && <ActivitiesTab L={L} lang={lang} acts={acts} onAdd={() => openAdd('activities')} />}
-          {isPack && (
-            <PackingTab
-              L={L}
-              lang={lang}
-              sharedAssigned={sharedAssigned}
-              sharedUnassigned={sharedUnassigned}
-              asgTabs={asgTabs}
-              personalItems={personalItems}
-              sharedProg={sharedProg}
-              personalProg={personalProg}
-              onAdd={() => openAdd('packing')}
-            />
+          {!!me && (
+            <div
+              // Remount per tab (key) so the slide-in animation replays; the
+              // direction follows the swipe/tap (next tab → in from the right).
+              key={tab}
+              style={{
+                ...css('display:flex;flex-direction:column;gap:10px'),
+                animation: `${slideDir < 0 ? 'slideFromLeft' : 'slideFromRight'} .24s ease-out`,
+              }}
+            >
+              {isHome && <HomeTab L={L} weatherDays={weatherDays} weatherNote={weatherNote} />}
+              {isAct && (
+                <ActivitiesTab L={L} lang={lang} acts={acts} onAdd={() => openAdd('activities')} />
+              )}
+              {isPack && (
+                <PackingTab
+                  L={L}
+                  lang={lang}
+                  sharedAssigned={sharedAssigned}
+                  sharedUnassigned={sharedUnassigned}
+                  asgTabs={asgTabs}
+                  personalItems={personalItems}
+                  sharedProg={sharedProg}
+                  personalProg={personalProg}
+                  onAdd={() => openAdd('packing')}
+                />
+              )}
+              {isFood && <FoodTab L={L} lang={lang} foods={foodList} onAdd={() => openAdd('foods')} />}
+            </div>
           )}
-          {isFood && <FoodTab L={L} lang={lang} foods={foodList} onAdd={() => openAdd('foods')} />}
         </div>
 
         {!!me && <BottomNav navs={navs} />}

@@ -69,3 +69,30 @@ html[lang='zh'] [style*='Jua'] {
     opacity: 1;
   }
 }
+/* Tab slide transitions (direction follows the swipe/tap). Kept to a small
+ * offset + fade so it never overflows the mobile frame. */
+@keyframes slideFromRight {
+  from {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes slideFromLeft {
+  from {
+    transform: translateX(-28px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*='slideFrom'] {
+    animation: none !important;
+  }
+}

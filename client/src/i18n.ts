@@ -58,6 +58,8 @@ export interface UIStrings {
   assigned: string;
   unassigned: string;
   filterAll: string;
+  searchPh: string;
+  noResult: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -119,6 +121,8 @@ export const UI: Record<Lang, UIStrings> = {
     assigned: '담당 배정됨',
     unassigned: '미지정',
     filterAll: '전체보기',
+    searchPh: '준비물 검색',
+    noResult: '검색 결과가 없어요',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -178,6 +182,8 @@ export const UI: Record<Lang, UIStrings> = {
     assigned: '已分配',
     unassigned: '未分配',
     filterAll: '全部',
+    searchPh: '搜索行李',
+    noResult: '没有搜索结果',
   },
 };
 
