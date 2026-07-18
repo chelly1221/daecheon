@@ -235,7 +235,7 @@ export default function App() {
       if (p) openEditPack(p);
     }
   };
-  const addComment = (itemId: string, text: string) => {
+  const addComment = (itemId: string, text: string, replyTo?: string) => {
     const t = text.trim();
     if (!t) return;
     const c: Comment = {
@@ -243,8 +243,25 @@ export default function App() {
       mid: me,
       text: t,
       ts: Date.now(),
+      ...(replyTo ? { replyTo } : {}),
     };
     setComments((prev) => ({ ...prev, [itemId]: [...(prev[itemId] || []), c] }));
+    sync.pushSoon();
+  };
+  // Soft-delete: replace the message with a monotonic tombstone (text stripped)
+  // rather than removing it, so the append-only sync merge can't resurrect it.
+  const deleteComment = (itemId: string, id: string) => {
+    setComments((prev) => {
+      const list = prev[itemId];
+      if (!list) return prev;
+      let hit = false;
+      const next = list.map((c) => {
+        if (c.id !== id || c.del) return c;
+        hit = true;
+        return { ...c, text: '', del: true };
+      });
+      return hit ? { ...prev, [itemId]: next } : prev;
+    });
     sync.pushSoon();
   };
   const onCheck = (p: PackItem) => {
@@ -335,6 +352,9 @@ export default function App() {
   const myInitial = (meMember ? meMember.name : '?').slice(0, 1);
   const myColor = meMember ? meMember.color : '#8AA5B8';
 
+  // Live (non-deleted) comment count for an item's card badge.
+  const liveCount = (id: string) => (comments[id] || []).reduce((n, c) => (c.del ? n : n + 1), 0);
+
   const meChips: MeChip[] = MEMBERS.map((m) => {
     const on = me === m.id;
     return {
@@ -366,7 +386,7 @@ export default function App() {
       descShow: !!desc,
       link: normLink(a.link),
       linkShow: !!a.link,
-      commentCount: (comments[a.id] || []).length,
+      commentCount: liveCount(a.id),
       edChips: edFor(a.id),
       onTap: () => openDetail('activities', a.id),
     };
@@ -382,7 +402,7 @@ export default function App() {
       memoShow: !!memo,
       link: normLink(f.link),
       linkShow: !!f.link,
-      commentCount: (comments[f.id] || []).length,
+      commentCount: liveCount(f.id),
       edChips: edFor(f.id),
       onTap: () => openDetail('foods', f.id),
     };
@@ -403,7 +423,7 @@ export default function App() {
               return m ? { label: m.name, bg: m.color } : null;
             })
             .filter((x): x is AsgChip => x !== null),
-      commentCount: (comments[p.id] || []).length,
+      commentCount: liveCount(p.id),
       edChips: edFor(p.id),
       onCheck: () => onCheck(p),
       onTap: () => openDetail('packing', p.id),
@@ -471,22 +491,41 @@ export default function App() {
     const p2 = (n: number) => String(n).padStart(2, '0');
     return p2(dt.getHours()) + ':' + p2(dt.getMinutes());
   };
-  const detailComments: DetailComment[] = detail
-    ? (comments[detail.id] || [])
-        .slice()
-        .sort((a, b) => a.ts - b.ts)
-        .map((c) => {
-          const m = MEMBERS.find((x) => x.id === c.mid);
-          return {
-            id: c.id,
-            name: m ? m.name : zh ? '有人' : '누군가',
-            color: m ? m.color : '#8AA5B8',
-            text: c.text,
-            time: fmtTime(c.ts),
-            isMe: !!me && c.mid === me,
-          };
-        })
-    : [];
+  const whoOf = (mid: string | null) => {
+    const m = MEMBERS.find((x) => x.id === mid);
+    return { name: m ? m.name : zh ? '有人' : '누군가', color: m ? m.color : '#8AA5B8' };
+  };
+  const detailComments: DetailComment[] = ((): DetailComment[] => {
+    if (!detail) return [];
+    const raw = comments[detail.id] || [];
+    const byId = new Map(raw.map((c) => [c.id, c] as const));
+    return raw
+      .filter((c) => !c.del)
+      .sort((a, b) => a.ts - b.ts)
+      .map((c) => {
+        const who = whoOf(c.mid);
+        let parent: DetailComment['parent'] = null;
+        if (c.replyTo) {
+          const p = byId.get(c.replyTo);
+          if (!p || p.del) {
+            parent = { name: p ? whoOf(p.mid).name : '', text: '', color: '#B7CBDB', deleted: true };
+          } else {
+            const pw = whoOf(p.mid);
+            parent = { name: pw.name, text: p.text, color: pw.color, deleted: false };
+          }
+        }
+        return {
+          id: c.id,
+          name: who.name,
+          color: who.color,
+          text: c.text,
+          time: fmtTime(c.ts),
+          isMe: !!me && c.mid === me,
+          replyTo: c.replyTo,
+          parent,
+        };
+      });
+  })();
   let detailVM: {
     title: string;
     typeLabel: string;
@@ -589,7 +628,8 @@ export default function App() {
             link={detailVM.link}
             linkShow={detailVM.linkShow}
             comments={detailComments}
-            onSend={(text) => addComment(detail.id, text)}
+            onSend={(text, replyTo) => addComment(detail.id, text, replyTo)}
+            onDelete={(id) => deleteComment(detail.id, id)}
             onEdit={editFromDetail}
             onClose={() => setDetail(null)}
           />

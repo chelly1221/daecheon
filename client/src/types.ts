@@ -43,6 +43,14 @@ export interface Comment {
   mid: string | null;
   text: string;
   ts: number;
+  /** Parent comment id when this message is a reply. */
+  replyTo?: string;
+  /**
+   * Soft-delete tombstone. Monotonic (only ever flips false→true) so it wins
+   * over the live copy in the append-only comment merge and can never be
+   * resurrected by a stale device. Deleted messages carry empty `text`.
+   */
+  del?: boolean;
 }
 
 /** Comments keyed by the item id they belong to. */

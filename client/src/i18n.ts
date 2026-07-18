@@ -48,6 +48,10 @@ export interface UIStrings {
   comments: string;
   commentPh: string;
   noComments: string;
+  reply: string;
+  copy: string;
+  copied: string;
+  deletedMsg: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -99,6 +103,10 @@ export const UI: Record<Lang, UIStrings> = {
     comments: '채팅',
     commentPh: '메시지 입력…',
     noComments: '아직 채팅이 없어요 · 먼저 말을 걸어보세요',
+    reply: '답글',
+    copy: '복사',
+    copied: '복사됨',
+    deletedMsg: '삭제된 메시지',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -148,6 +156,10 @@ export const UI: Record<Lang, UIStrings> = {
     comments: '聊天',
     commentPh: '输入消息…',
     noComments: '还没有聊天 · 来打个招呼吧',
+    reply: '回复',
+    copy: '复制',
+    copied: '已复制',
+    deletedMsg: '该消息已删除',
   },
 };
 

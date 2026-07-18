@@ -40,11 +40,12 @@ async function writeRoom(id, doc) {
   cache.set(id, doc); // only cache state that is persisted on disk
 }
 
-// Merge two comment maps as an append-only set union (keyed by comment id).
-// Comments are immutable and never deleted, so the server can safely union the
-// incoming map with what it already stored — this way a client that PUTs a
-// slightly stale comments map (e.g. two people commenting within one poll
-// interval) can never clobber another device's message.
+// Merge two comment maps as a convergent set union (keyed by comment id). A
+// message is immutable once created except for its `del` tombstone, which is
+// monotonic (false→true only): `del:true` always wins over the live copy of the
+// same id. This lets a client that PUTs a slightly stale comments map (e.g. two
+// people commenting within one poll interval) never clobber another device's
+// message, while a deletion is applied once and never resurrected.
 function mergeComments(a, b) {
   const A = a && typeof a === 'object' ? a : {};
   const B = b && typeof b === 'object' ? b : {};
@@ -52,7 +53,12 @@ function mergeComments(a, b) {
   for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) {
     const byId = new Map();
     for (const c of Array.isArray(A[k]) ? A[k] : []) if (c && c.id != null) byId.set(c.id, c);
-    for (const c of Array.isArray(B[k]) ? B[k] : []) if (c && c.id != null && !byId.has(c.id)) byId.set(c.id, c);
+    for (const c of Array.isArray(B[k]) ? B[k] : []) {
+      if (!c || c.id == null) continue;
+      const cur = byId.get(c.id);
+      if (!cur) byId.set(c.id, c);
+      else if (c.del && !cur.del) byId.set(c.id, { ...cur, text: '', del: true });
+    }
     out[k] = [...byId.values()].sort((x, y) => (x.ts || 0) - (y.ts || 0));
   }
   return out;

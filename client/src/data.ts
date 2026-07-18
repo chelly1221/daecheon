@@ -3,12 +3,20 @@ import type { Activity, Comment, Comments, Food, Member, PackItem, TripDoc } fro
 export const KEY = 'paros-trip-2026-v1';
 export const ROOM_DEFAULT = 'paros-daecheon-2026-x7k3q9';
 
+/** A message and its delete tombstone both merged in: `del` wins, text stripped. */
+function tombstone(c: Comment): Comment {
+  return { ...c, text: '', del: true };
+}
+
 /**
- * Merge two comment maps as an append-only set union (keyed by comment id),
- * sorted by timestamp. Comments are immutable once created, so this converges
- * regardless of the doc-level last-write-wins sync — concurrent messages from
- * different devices are never lost. Returns `local` unchanged (same reference)
- * when `remote` adds nothing, so callers can skip needless re-renders.
+ * Merge two comment maps as a convergent set union keyed by comment id, sorted
+ * by timestamp. A message is immutable once created except for its `del`
+ * tombstone, which is monotonic (false→true only), so `del:true` always wins
+ * over the live copy of the same id. This converges regardless of the
+ * doc-level last-write-wins sync: concurrent messages are never lost and a
+ * deletion is never resurrected by a device that hasn't seen it yet. Returns
+ * `local` unchanged (same reference) when `remote` changes nothing, so callers
+ * can skip needless re-renders.
  */
 export function mergeComments(local: Comments, remote: Comments): Comments {
   const loc = local || {};
@@ -26,10 +34,16 @@ export function mergeComments(local: Comments, remote: Comments): Comments {
     const byId = new Map<string, Comment>();
     for (const c of l) byId.set(c.id, c);
     for (const c of r) {
-      if (!byId.has(c.id)) {
+      const cur = byId.get(c.id);
+      if (!cur) {
         byId.set(c.id, c);
         changed = true;
+      } else if (c.del && !cur.del) {
+        // Remote learned of a deletion we hadn't yet — adopt the tombstone.
+        byId.set(c.id, tombstone(cur));
+        changed = true;
       }
+      // else: keep `cur` (identical live copy, or our own tombstone winning).
     }
     out[k] = [...byId.values()].sort((a, b) => a.ts - b.ts);
   }
