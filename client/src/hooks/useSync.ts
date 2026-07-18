@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { KEY, ROOM_DEFAULT } from '../data';
+import { KEY, ROOM_DEFAULT, mergeComments } from '../data';
 import type {
   Activity,
+  Comments,
   Food,
   PackItem,
   Presence,
@@ -33,9 +34,11 @@ interface SyncOpts {
   activities: Activity[];
   packing: PackItem[];
   foods: Food[];
+  comments: Comments;
   setActivities: (v: Activity[]) => void;
   setPacking: (v: PackItem[]) => void;
   setFoods: (v: Food[]) => void;
+  setComments: (v: Comments) => void;
 }
 
 export interface SyncApi {
@@ -82,6 +85,14 @@ export function useSync(opts: SyncOpts): SyncApi {
         const d = await r.json();
         if (!d || !Array.isArray(d.activities)) throw new Error('bad');
         applyPresence(d.presence || {});
+        // Comments merge independently of the doc-level last-write-wins: union
+        // remote comments into local every pull (even while a push is pending)
+        // so concurrent messages are never dropped.
+        {
+          const st = stateRef.current;
+          const merged = mergeComments(st.comments, d.comments || {});
+          if (merged !== st.comments) st.setComments(merged);
+        }
         if ((d.updatedAt || 0) > (docTsRef.current || 0) && !pendingPushRef.current) {
           docTsRef.current = d.updatedAt || 0;
           const st = stateRef.current;
@@ -128,6 +139,7 @@ export function useSync(opts: SyncOpts): SyncApi {
         activities: st.activities,
         packing: st.packing,
         foods: st.foods,
+        comments: st.comments,
         presence: pres,
         updatedAt: now,
       };
@@ -172,8 +184,12 @@ export function useSync(opts: SyncOpts): SyncApi {
   useEffect(() => {
     docTsRef.current = 0;
     applyPresence({});
-    const m = (location.hash || '').match(/room=([A-Za-z0-9-]+)/);
-    const id = m ? m[1] : ROOM_DEFAULT;
+    // Room id comes from the URL. Accept both ?room= (used when reopening the
+    // page in Chrome from an in-app browser, whose localStorage doesn't carry
+    // over) and the canonical #room= hash.
+    const qRoom = new URLSearchParams(location.search).get('room');
+    const hRoom = (location.hash || '').match(/room=([A-Za-z0-9-]+)/);
+    const id = qRoom && /^[A-Za-z0-9-]+$/.test(qRoom) ? qRoom : hRoom ? hRoom[1] : ROOM_DEFAULT;
     roomIdRef.current = id;
     try {
       localStorage.setItem('paros-room', id);
@@ -181,8 +197,9 @@ export function useSync(opts: SyncOpts): SyncApi {
       /* ignore */
     }
     try {
-      if (!(location.hash || '').includes(id)) {
-        history.replaceState(null, '', '#room=' + id);
+      // Normalise to a clean pathname + #room= hash (drops any ?room= query).
+      if (location.search || !(location.hash || '').includes(id)) {
+        history.replaceState(null, '', location.pathname + '#room=' + id);
       }
     } catch {
       /* ignore */
@@ -219,12 +236,13 @@ export function useSync(opts: SyncOpts): SyncApi {
           activities: opts.activities,
           packing: opts.packing,
           foods: opts.foods,
+          comments: opts.comments,
         }),
       );
     } catch {
       /* ignore */
     }
-  }, [opts.me, opts.activities, opts.packing, opts.foods]);
+  }, [opts.me, opts.activities, opts.packing, opts.foods, opts.comments]);
 
   return {
     status,

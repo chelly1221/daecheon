@@ -13,6 +13,8 @@ import { devId, useSync } from './hooks/useSync';
 import { useWeather } from './hooks/useWeather';
 import type {
   Activity,
+  Comment,
+  Comments,
   EditChip,
   Food,
   Lang,
@@ -35,6 +37,9 @@ import type { NavItem } from './components/BottomNav';
 import ProfileModal from './components/ProfileModal';
 import EditSheet from './components/EditSheet';
 import type { SheetChip } from './components/EditSheet';
+import InstallPrompt from './components/InstallPrompt';
+import ItemDetail from './components/ItemDetail';
+import type { DetailComment } from './components/ItemDetail';
 
 interface Initial {
   me: string | null;
@@ -42,6 +47,7 @@ interface Initial {
   activities: Activity[];
   packing: PackItem[];
   foods: Food[];
+  comments: Comments;
 }
 
 function loadInitial(): Initial {
@@ -62,6 +68,7 @@ function loadInitial(): Initial {
         activities: j.activities || d.activities,
         packing: j.packing || d.packing,
         foods: j.foods || d.foods,
+        comments: j.comments && typeof j.comments === 'object' ? j.comments : {},
       };
     }
   } catch {
@@ -92,8 +99,10 @@ export default function App() {
   const [activities, setActivities] = useState<Activity[]>(initial.activities);
   const [packing, setPacking] = useState<PackItem[]>(initial.packing);
   const [foods, setFoods] = useState<Food[]>(initial.foods);
+  const [comments, setComments] = useState<Comments>(initial.comments);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sheet, setSheet] = useState<SheetState | null>(null);
+  const [detail, setDetail] = useState<{ list: ListKey; id: string } | null>(null);
   const [fName, setFName] = useState('');
   const [fMemo, setFMemo] = useState('');
   const [fLink, setFLink] = useState('');
@@ -107,12 +116,15 @@ export default function App() {
     activities,
     packing,
     foods,
+    comments,
     setActivities,
     setPacking,
     setFoods,
+    setComments,
   });
 
   useEffect(() => {
+    document.documentElement.lang = lang; // drives the zh-only cute-font CSS
     try {
       localStorage.setItem('paros-lang', lang);
     } catch {
@@ -206,6 +218,34 @@ export default function App() {
     setFLink('');
     setFCat(p.cat || 'shared');
     setFAsg(p.assignees ? [...p.assignees] : []);
+  };
+  const openDetail = (list: ListKey, id: string) => setDetail({ list, id });
+  const editFromDetail = () => {
+    if (!detail) return;
+    const { list, id } = detail;
+    setDetail(null);
+    if (list === 'activities') {
+      const a = activities.find((x) => x.id === id);
+      if (a) openEditAct(a);
+    } else if (list === 'foods') {
+      const f = foods.find((x) => x.id === id);
+      if (f) openEditFood(f);
+    } else {
+      const p = packing.find((x) => x.id === id);
+      if (p) openEditPack(p);
+    }
+  };
+  const addComment = (itemId: string, text: string) => {
+    const t = text.trim();
+    if (!t) return;
+    const c: Comment = {
+      id: myDev + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+      mid: me,
+      text: t,
+      ts: Date.now(),
+    };
+    setComments((prev) => ({ ...prev, [itemId]: [...(prev[itemId] || []), c] }));
+    sync.pushSoon();
   };
   const onCheck = (p: PackItem) => {
     sync.touch(p.id);
@@ -326,8 +366,9 @@ export default function App() {
       descShow: !!desc,
       link: normLink(a.link),
       linkShow: !!a.link,
+      commentCount: (comments[a.id] || []).length,
       edChips: edFor(a.id),
-      onTap: () => openEditAct(a),
+      onTap: () => openDetail('activities', a.id),
     };
   });
 
@@ -341,8 +382,9 @@ export default function App() {
       memoShow: !!memo,
       link: normLink(f.link),
       linkShow: !!f.link,
+      commentCount: (comments[f.id] || []).length,
       edChips: edFor(f.id),
-      onTap: () => openEditFood(f),
+      onTap: () => openDetail('foods', f.id),
     };
   });
 
@@ -361,9 +403,10 @@ export default function App() {
               return m ? { label: m.name, bg: m.color } : null;
             })
             .filter((x): x is AsgChip => x !== null),
+      commentCount: (comments[p.id] || []).length,
       edChips: edFor(p.id),
       onCheck: () => onCheck(p),
-      onTap: () => openEditPack(p),
+      onTap: () => openDetail('packing', p.id),
     };
   };
   const sharedRaw = packing.filter((p) => p.cat === 'shared');
@@ -422,6 +465,69 @@ export default function App() {
     };
   });
 
+  // Item detail + comment thread view model
+  const fmtTime = (ts: number) => {
+    const dt = new Date(ts);
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    return p2(dt.getHours()) + ':' + p2(dt.getMinutes());
+  };
+  const detailComments: DetailComment[] = detail
+    ? (comments[detail.id] || [])
+        .slice()
+        .sort((a, b) => a.ts - b.ts)
+        .map((c) => {
+          const m = MEMBERS.find((x) => x.id === c.mid);
+          return {
+            id: c.id,
+            name: m ? m.name : zh ? '有人' : '누군가',
+            color: m ? m.color : '#8AA5B8',
+            text: c.text,
+            time: fmtTime(c.ts),
+            isMe: !!me && c.mid === me,
+          };
+        })
+    : [];
+  let detailVM: {
+    title: string;
+    typeLabel: string;
+    meta: string;
+    link: string;
+    linkShow: boolean;
+  } | null = null;
+  if (detail) {
+    if (detail.list === 'activities') {
+      const a = activities.find((x) => x.id === detail.id);
+      if (a)
+        detailVM = {
+          title: zh && a.zh ? a.zh : a.name,
+          typeLabel: '',
+          meta: zh ? ACT_DESC_ZH[a.id] || a.desc || '' : a.desc || '',
+          link: normLink(a.link),
+          linkShow: !!a.link,
+        };
+    } else if (detail.list === 'foods') {
+      const f = foods.find((x) => x.id === detail.id);
+      if (f)
+        detailVM = {
+          title: zh && f.zh ? f.zh : f.name,
+          typeLabel: zh ? FOOD_TYPE_ZH[f.type] || f.type || '' : f.type || '',
+          meta: zh ? FOOD_MEMO_ZH[f.id] || f.memo || '' : f.memo || '',
+          link: normLink(f.link),
+          linkShow: !!f.link,
+        };
+    } else {
+      const p = packing.find((x) => x.id === detail.id);
+      if (p)
+        detailVM = {
+          title: zh && p.zh ? p.zh : p.name,
+          typeLabel: p.cat === 'personal' ? L.personal : L.shared,
+          meta: '',
+          link: '',
+          linkShow: false,
+        };
+    }
+  }
+
   const isHome = !!me && tab === 'home';
   const isAct = !!me && tab === 'act';
   const isPack = !!me && tab === 'pack';
@@ -456,10 +562,11 @@ export default function App() {
         >
           {!me && <StartScreen L={L} meChips={meChips} />}
           {isHome && <HomeTab L={L} weatherDays={weatherDays} weatherNote={weatherNote} />}
-          {isAct && <ActivitiesTab L={L} acts={acts} onAdd={() => openAdd('activities')} />}
+          {isAct && <ActivitiesTab L={L} lang={lang} acts={acts} onAdd={() => openAdd('activities')} />}
           {isPack && (
             <PackingTab
               L={L}
+              lang={lang}
               sharedItems={sharedItems}
               personalItems={personalItems}
               sharedProg={sharedProg}
@@ -467,12 +574,33 @@ export default function App() {
               onAdd={() => openAdd('packing')}
             />
           )}
-          {isFood && <FoodTab L={L} foods={foodList} onAdd={() => openAdd('foods')} />}
+          {isFood && <FoodTab L={L} lang={lang} foods={foodList} onAdd={() => openAdd('foods')} />}
         </div>
 
         {!!me && <BottomNav navs={navs} />}
+        <InstallPrompt zh={zh} navOffset={!!me} />
+        {detail && detailVM && (
+          <ItemDetail
+            L={L}
+            lang={lang}
+            title={detailVM.title}
+            typeLabel={detailVM.typeLabel}
+            meta={detailVM.meta}
+            link={detailVM.link}
+            linkShow={detailVM.linkShow}
+            comments={detailComments}
+            onSend={(text) => addComment(detail.id, text)}
+            onEdit={editFromDetail}
+            onClose={() => setDetail(null)}
+          />
+        )}
         {profileOpen && (
-          <ProfileModal L={L} meChips={meChips} onClose={() => setProfileOpen(false)} />
+          <ProfileModal
+            L={L}
+            zh={zh}
+            meChips={meChips}
+            onClose={() => setProfileOpen(false)}
+          />
         )}
         {sheet && (
           <EditSheet

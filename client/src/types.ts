@@ -38,10 +38,21 @@ export interface Food {
   likes: string[];
 }
 
+export interface Comment {
+  id: string;
+  mid: string | null;
+  text: string;
+  ts: number;
+}
+
+/** Comments keyed by the item id they belong to. */
+export type Comments = Record<string, Comment[]>;
+
 export interface TripDoc {
   activities: Activity[];
   packing: PackItem[];
   foods: Food[];
+  comments: Comments;
 }
 
 export interface PresenceEntry {

@@ -1,7 +1,45 @@
-import type { Activity, Food, Member, PackItem, TripDoc } from './types';
+import type { Activity, Comment, Comments, Food, Member, PackItem, TripDoc } from './types';
 
 export const KEY = 'paros-trip-2026-v1';
 export const ROOM_DEFAULT = 'paros-daecheon-2026-x7k3q9';
+
+/**
+ * Merge two comment maps as an append-only set union (keyed by comment id),
+ * sorted by timestamp. Comments are immutable once created, so this converges
+ * regardless of the doc-level last-write-wins sync — concurrent messages from
+ * different devices are never lost. Returns `local` unchanged (same reference)
+ * when `remote` adds nothing, so callers can skip needless re-renders.
+ */
+export function mergeComments(local: Comments, remote: Comments): Comments {
+  const loc = local || {};
+  const rem = remote || {};
+  let changed = false;
+  const out: Comments = {};
+  const keys = new Set([...Object.keys(loc), ...Object.keys(rem)]);
+  for (const k of keys) {
+    const l = loc[k] || [];
+    const r = rem[k] || [];
+    if (r.length === 0) {
+      out[k] = l;
+      continue;
+    }
+    const byId = new Map<string, Comment>();
+    for (const c of l) byId.set(c.id, c);
+    for (const c of r) {
+      if (!byId.has(c.id)) {
+        byId.set(c.id, c);
+        changed = true;
+      }
+    }
+    out[k] = [...byId.values()].sort((a, b) => a.ts - b.ts);
+  }
+  if (!changed) {
+    // Remote introduced no new comments; keep the local reference as-is unless
+    // the key set itself grew (an item that only exists remotely so far).
+    if (Object.keys(out).length !== Object.keys(loc).length) changed = true;
+  }
+  return changed ? out : loc;
+}
 
 export const MEMBERS: Member[] = [
   { id: 'm1', name: '石甜筒', color: '#E8503A' },
@@ -58,5 +96,6 @@ export function defaultDoc(): TripDoc {
     activities: activities.map((a) => ({ ...a, votes: [...a.votes] })),
     packing: packing.map((p) => ({ ...p, assignees: [...p.assignees] })),
     foods: foods.map((f) => ({ ...f, likes: [...f.likes] })),
+    comments: {},
   };
 }

@@ -44,6 +44,10 @@ export interface UIStrings {
   memoPh: string;
   asg: string;
   del: string;
+  edit: string;
+  comments: string;
+  commentPh: string;
+  noComments: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -91,6 +95,10 @@ export const UI: Record<Lang, UIStrings> = {
     memoPh: '메모 (선택)',
     asg: '담당자',
     del: '삭제',
+    edit: '수정',
+    comments: '채팅',
+    commentPh: '메시지 입력…',
+    noComments: '아직 채팅이 없어요 · 먼저 말을 걸어보세요',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -136,6 +144,10 @@ export const UI: Record<Lang, UIStrings> = {
     memoPh: '备注(选填)',
     asg: '负责人',
     del: '删除',
+    edit: '编辑',
+    comments: '聊天',
+    commentPh: '输入消息…',
+    noComments: '还没有聊天 · 来打个招呼吧',
   },
 };
 

@@ -1,14 +1,67 @@
+import { useEffect, useState } from 'react';
 import { css } from '../css';
 import type { UIStrings } from '../i18n';
+import {
+  canPromptInstall,
+  iosInstallHintEligible,
+  isStandalone,
+  onInstallStateChange,
+  promptInstall,
+} from '../pwa';
 import type { MeChip } from './StartScreen';
 
 interface Props {
   L: UIStrings;
+  zh: boolean;
   meChips: MeChip[];
   onClose: () => void;
 }
 
-export default function ProfileModal({ L, meChips, onClose }: Props) {
+const INST = {
+  ko: {
+    install: '앱으로 설치',
+    installed: '이미 앱으로 설치됨',
+    iosHint: 'Safari에서 공유 버튼 → "홈 화면에 추가"를 눌러주세요',
+  },
+  zh: {
+    install: '安装为应用',
+    installed: '已安装为应用',
+    iosHint: '在 Safari 点击分享按钮 → "添加到主屏幕"',
+  },
+};
+
+export default function ProfileModal({ L, zh, meChips, onClose }: Props) {
+  const [mode, setMode] = useState<'android' | 'ios' | 'installed' | 'none'>('none');
+  const [iosHint, setIosHint] = useState(false);
+  const t = zh ? INST.zh : INST.ko;
+
+  useEffect(() => {
+    const decide = () => {
+      if (isStandalone()) setMode('installed');
+      else if (canPromptInstall()) setMode('android');
+      else if (iosInstallHintEligible()) setMode('ios');
+      else setMode('none');
+    };
+    decide();
+    return onInstallStateChange(decide);
+  }, []);
+
+  const onInstall = async () => {
+    if (mode === 'ios') {
+      setIosHint((v) => !v);
+      return;
+    }
+    const outcome = await promptInstall();
+    if (outcome === 'accepted') {
+      try {
+        localStorage.setItem('paros-install', 'installed');
+      } catch {
+        /* ignore */
+      }
+      setMode('installed');
+    }
+  };
+
   return (
     <div
       onClick={onClose}
@@ -38,12 +91,50 @@ export default function ProfileModal({ L, meChips, onClose }: Props) {
                 style={css(`width:12px;height:12px;border-radius:50%;background:${c.dot};flex:none`)}
               />
               <span style={css('flex:1')}>{c.label}</span>
-              {c.isMe && (
-                <span style={css('font-size:11.5px;font-weight:700')}>{L.current}</span>
-              )}
+              {c.isMe && <span style={css('font-size:11.5px;font-weight:700')}>{L.current}</span>}
             </button>
           ))}
         </div>
+
+        {mode !== 'none' && (
+          <>
+            <div style={css('height:1px;background:#EAF2F8;margin:2px 0')} />
+            {mode === 'installed' ? (
+              <div
+                style={css(
+                  'display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;color:#1D9E7A;font-size:13.5px;font-weight:600',
+                )}
+              >
+                <span style={css("font-family:'Material Symbols Rounded';font-size:18px")}>
+                  check_circle
+                </span>
+                {t.installed}
+              </div>
+            ) : (
+              <button
+                onClick={onInstall}
+                style={css(
+                  "min-height:48px;border:none;border-radius:12px;background:#0B7CD8;color:#FFFFFF;font-family:'Jua',sans-serif;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:7px",
+                )}
+              >
+                <span style={css("font-family:'Material Symbols Rounded';font-size:19px;line-height:1")}>
+                  install_mobile
+                </span>
+                {t.install}
+              </button>
+            )}
+            {mode === 'ios' && iosHint && (
+              <div
+                style={css(
+                  'font-size:12px;color:#5A7D96;line-height:1.5;text-align:center;background:#F2F9FE;border:1px solid #DCEAF4;border-radius:12px;padding:10px 12px',
+                )}
+              >
+                {t.iosHint}
+              </div>
+            )}
+          </>
+        )}
+
         <button
           onClick={onClose}
           style={css(

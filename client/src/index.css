@@ -26,6 +26,22 @@ input {
 input::placeholder {
   color: #9dbdd2;
 }
+
+/*
+ * Chinese (Simplified) — use a cute, rounded display face (ZCOOL KuaiLe /
+ * 站酷快乐体) in Chinese mode. Noto Sans SC follows as a full-coverage fallback
+ * for any mainland-simplified glyph the cute font is missing, and Noto Sans KR
+ * is last so member names written in Hangul/kana still render. Everything
+ * inherits from body; buttons/inputs already use `font-family: inherit`.
+ */
+html[lang='zh'] body {
+  font-family: 'ZCOOL KuaiLe', 'Noto Sans SC', 'Noto Sans KR', sans-serif;
+}
+/* Display headings set `font-family:'Jua',...` inline (Korean-only); swap those
+ * to the cute Chinese face when in Chinese mode. */
+html[lang='zh'] [style*='Jua'] {
+  font-family: 'ZCOOL KuaiLe', 'Noto Sans SC', sans-serif !important;
+}
 @keyframes bob {
   0%,
   100% {

@@ -1,14 +1,18 @@
 import { css } from '../css';
 import type { UIStrings } from '../i18n';
+import type { Lang } from '../types';
 import type { FoodView } from '../viewmodels';
+import AutoText from './AutoText';
+import CommentBadge from './CommentBadge';
 
 interface Props {
   L: UIStrings;
+  lang: Lang;
   foods: FoodView[];
   onAdd: () => void;
 }
 
-export default function FoodTab({ L, foods, onAdd }: Props) {
+export default function FoodTab({ L, lang, foods, onAdd }: Props) {
   return (
     <div data-screen-label="맛집" style={css('display:flex;flex-direction:column;gap:12px')}>
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>
@@ -41,7 +45,7 @@ export default function FoodTab({ L, foods, onAdd }: Props) {
                     "font-family:'Jua',sans-serif;font-size:16.5px;color:#1C4E70;line-height:1.3",
                   )}
                 >
-                  {f.name}
+                  <AutoText text={f.name} to={lang} />
                 </span>
                 <span
                   style={css(
@@ -65,10 +69,13 @@ export default function FoodTab({ L, foods, onAdd }: Props) {
                 )}
               </div>
               {f.memoShow && (
-                <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>{f.memo}</div>
+                <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>
+                  <AutoText text={f.memo} to={lang} />
+                </div>
               )}
             </div>
-            <div style={css('display:flex;align-items:center;gap:6px;flex:none')}>
+            <div style={css('display:flex;align-items:center;gap:7px;flex:none')}>
+              {f.commentCount > 0 && <CommentBadge n={f.commentCount} />}
               <span
                 style={css('color:#B8D3E6;font-size:20px;line-height:1.2;font-weight:600')}
               >

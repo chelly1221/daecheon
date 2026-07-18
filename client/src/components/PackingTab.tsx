@@ -1,9 +1,13 @@
 import { css } from '../css';
 import type { UIStrings } from '../i18n';
+import type { Lang } from '../types';
 import type { PackView } from '../viewmodels';
+import AutoText from './AutoText';
+import CommentBadge from './CommentBadge';
 
 interface Props {
   L: UIStrings;
+  lang: Lang;
   sharedItems: PackView[];
   personalItems: PackView[];
   sharedProg: string;
@@ -13,6 +17,7 @@ interface Props {
 
 export default function PackingTab({
   L,
+  lang,
   sharedItems,
   personalItems,
   sharedProg,
@@ -39,7 +44,7 @@ export default function PackingTab({
         <span style={css('font-size:12px;color:#66A3E0;font-weight:600')}>{sharedProg}</span>
       </div>
       {sharedItems.map((p) => (
-        <PackRow key={p.id} p={p} />
+        <PackRow key={p.id} p={p} lang={lang} />
       ))}
 
       <div style={css('display:flex;align-items:baseline;gap:8px;margin-top:6px')}>
@@ -47,13 +52,13 @@ export default function PackingTab({
         <span style={css('font-size:12px;color:#66A3E0;font-weight:600')}>{personalProg}</span>
       </div>
       {personalItems.map((p) => (
-        <PackRow key={p.id} p={p} />
+        <PackRow key={p.id} p={p} lang={lang} />
       ))}
     </div>
   );
 }
 
-function PackRow({ p }: { p: PackView }) {
+function PackRow({ p, lang }: { p: PackView; lang: Lang }) {
   const ckBd = p.checked ? '#23BD94' : '#C3DCEC';
   const ckBg = p.checked ? '#23BD94' : '#FFFFFF';
   return (
@@ -76,7 +81,7 @@ function PackRow({ p }: { p: PackView }) {
           'flex:1;min-width:0;font-size:14.5px;font-weight:600;color:#22597C;text-decoration:none;opacity:1;cursor:pointer',
         )}
       >
-        {p.name}
+        <AutoText text={p.name} to={lang} />
       </div>
       <div
         style={css(
@@ -111,6 +116,7 @@ function PackRow({ p }: { p: PackView }) {
           ))}
         </div>
       )}
+      {p.commentCount > 0 && <CommentBadge n={p.commentCount} />}
       <span style={css('flex:none;color:#C6DCEC;font-size:17px;line-height:1;font-weight:600')}>›</span>
     </div>
   );

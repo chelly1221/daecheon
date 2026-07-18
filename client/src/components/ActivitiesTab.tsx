@@ -1,14 +1,18 @@
 import { css } from '../css';
 import type { UIStrings } from '../i18n';
+import type { Lang } from '../types';
 import type { ActView } from '../viewmodels';
+import AutoText from './AutoText';
+import CommentBadge from './CommentBadge';
 
 interface Props {
   L: UIStrings;
+  lang: Lang;
   acts: ActView[];
   onAdd: () => void;
 }
 
-export default function ActivitiesTab({ L, acts, onAdd }: Props) {
+export default function ActivitiesTab({ L, lang, acts, onAdd }: Props) {
   return (
     <div data-screen-label="액티비티" style={css('display:flex;flex-direction:column;gap:12px')}>
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>
@@ -41,7 +45,7 @@ export default function ActivitiesTab({ L, acts, onAdd }: Props) {
                     "font-family:'Jua',sans-serif;font-size:16.5px;color:#1C4E70;line-height:1.3",
                   )}
                 >
-                  {a.name}
+                  <AutoText text={a.name} to={lang} />
                 </span>
                 {a.linkShow && (
                   <a
@@ -58,12 +62,15 @@ export default function ActivitiesTab({ L, acts, onAdd }: Props) {
                 )}
               </div>
               {a.descShow && (
-                <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>{a.desc}</div>
+                <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>
+                  <AutoText text={a.desc} to={lang} />
+                </div>
               )}
             </div>
-            <span style={css('flex:none;color:#B8D3E6;font-size:20px;line-height:1.2;font-weight:600')}>
-              ›
-            </span>
+            <div style={css('flex:none;display:flex;align-items:center;gap:7px')}>
+              {a.commentCount > 0 && <CommentBadge n={a.commentCount} />}
+              <span style={css('color:#B8D3E6;font-size:20px;line-height:1.2;font-weight:600')}>›</span>
+            </div>
           </div>
           {a.edChips.length > 0 && (
             <div style={css('display:flex;flex-wrap:wrap;gap:5px')}>

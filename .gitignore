@@ -6,3 +6,6 @@ data/
 *.log
 logs/
 .DS_Store
+
+# deployment-only local override — intentionally untracked (see its header)
+docker-compose.override.yml
