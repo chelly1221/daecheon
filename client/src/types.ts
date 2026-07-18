@@ -37,7 +37,12 @@ export interface PackItem extends Identified {
   cat: 'shared' | 'personal';
   assignees: string[];
   checked: boolean;
+  /** Personal items: the members who've checked this off (each toggles only their
+   *  own id). Merged as a per-member LWW set via {@link checkTs}. */
   checkedBy?: string[];
+  /** Per-member last-toggle time for `checkedBy`, so two people checking the same
+   *  item concurrently converge instead of clobbering each other. */
+  checkTs?: Record<string, number>;
 }
 
 export interface Food extends Identified {

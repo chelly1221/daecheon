@@ -251,7 +251,7 @@ export default function App() {
       id: myDev + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
       mid: me,
       text: t,
-      ts: Date.now(),
+      ts: sync.nextTs(),
       ...(replyTo ? { replyTo } : {}),
     };
     setComments((prev) => ({ ...prev, [itemId]: [...(prev[itemId] || []), c] }));
@@ -276,7 +276,7 @@ export default function App() {
   const onCheck = (p: PackItem) => {
     sync.touch(p.id);
     const personal = p.cat === 'personal';
-    const now = Date.now();
+    const now = sync.nextTs();
     setPacking((prev) =>
       prev.map((it) => {
         if (it.id !== p.id) return it;
@@ -287,6 +287,8 @@ export default function App() {
             checkedBy: cb.includes(me as string)
               ? cb.filter((x) => x !== me)
               : [...cb, me as string],
+            // Per-member toggle time so concurrent checks merge instead of clobber.
+            checkTs: { ...(it.checkTs || {}), [me as string]: now },
             ts: now,
           };
         }
@@ -307,7 +309,7 @@ export default function App() {
     const memo = fMemo.trim();
     const cat = fCat;
     const link = (fLink || '').trim();
-    const now = Date.now();
+    const now = sync.nextTs();
     if (sheet.mode === 'add') {
       if (sheet.list === 'activities') {
         setActivities((prev) => [
@@ -357,7 +359,7 @@ export default function App() {
   const doDelete = () => {
     if (!sheet || sheet.mode !== 'edit' || !sheet.id) return;
     const id = sheet.id;
-    const now = Date.now();
+    const now = sync.nextTs();
     // Soft-delete: mark a monotonic tombstone (del:true) instead of removing the
     // element, so the per-item sync merge propagates the deletion to every
     // device and a stale copy can never resurrect it. View models hide `del`.

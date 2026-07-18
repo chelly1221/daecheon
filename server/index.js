@@ -67,6 +67,39 @@ function mergeComments(a, b) {
 // Resolve the surviving version of one list item present on two devices.
 // Content is last-write-wins by `ts` (ties keep the existing copy); the `del`
 // tombstone is monotonic, so a deleted item can never be resurrected.
+// Merge two versions' per-member check sets (packing checkedBy) by last-write
+// -wins on each member's own checkTs toggle time. Mirrors the client.
+function mergeChecks(l, r) {
+  const lTs = (l && l.checkTs) || {};
+  const rTs = (r && r.checkTs) || {};
+  const lOn = new Set((l && l.checkedBy) || []);
+  const rOn = new Set((r && r.checkedBy) || []);
+  const ids = new Set([...Object.keys(lTs), ...Object.keys(rTs), ...lOn, ...rOn]);
+  const checkedBy = [];
+  const checkTs = {};
+  for (const mid of [...ids].sort()) {
+    const lt = lTs[mid] || 0;
+    const rt = rTs[mid] || 0;
+    const on = rt > lt ? rOn.has(mid) : lt > rt ? lOn.has(mid) : lOn.has(mid) || rOn.has(mid);
+    const ts = lt > rt ? lt : rt;
+    if (ts) checkTs[mid] = ts;
+    if (on) checkedBy.push(mid);
+  }
+  return { checkedBy, checkTs };
+}
+
+function sameChecks(a, m) {
+  const cb = (a && a.checkedBy) || [];
+  if (cb.length !== m.checkedBy.length) return false;
+  const s = new Set(cb);
+  for (const id of m.checkedBy) if (!s.has(id)) return false;
+  const ct = (a && a.checkTs) || {};
+  const mk = Object.keys(m.checkTs);
+  if (Object.keys(ct).length !== mk.length) return false;
+  for (const k of mk) if ((ct[k] || 0) !== m.checkTs[k]) return false;
+  return true;
+}
+
 function pickItem(l, r) {
   if (!r) return l;
   const del = !!(l && l.del) || !!(r && r.del);
@@ -78,8 +111,14 @@ function pickItem(l, r) {
   if (rt > lt) winner = r;
   else if (lt > rt) winner = l;
   else winner = JSON.stringify(r) > JSON.stringify(l) ? r : l;
-  if (!!winner.del === del) return winner;
-  return { ...winner, del };
+  let result = !!winner.del === del ? winner : { ...winner, del };
+  if ((l && (l.checkedBy || l.checkTs)) || (r && (r.checkedBy || r.checkTs))) {
+    const merged = mergeChecks(l, r);
+    if (!sameChecks(result, merged)) {
+      result = { ...result, checkedBy: merged.checkedBy, checkTs: merged.checkTs };
+    }
+  }
+  return result;
 }
 
 // Merge two arrays of id'd items as a convergent union (mirrors the client's

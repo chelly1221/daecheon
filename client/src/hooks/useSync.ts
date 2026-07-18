@@ -55,6 +55,10 @@ export interface SyncApi {
   presence: Presence;
   presTick: number;
   roomId: string;
+  /** Hybrid-logical-clock timestamp for a new edit: never below any ts already
+   *  seen, so a device with a lagging wall clock can't have its edits silently
+   *  lost to last-write-wins. Use for every synced `ts`/`checkTs` stamp. */
+  nextTs: () => number;
   touch: (id: string) => void;
   /** Queue a debounced push. `silent` skips the save badge for presence/nav-only
    *  writes (tab change, profile switch, editing indicator) that aren't a
@@ -92,10 +96,19 @@ export function useSync(opts: SyncOpts): SyncApi {
   const dirtyRef = useRef<boolean>(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Hybrid logical clock: monotonic, and bumped above every ts seen from the
+  // server, so edits are causally ordered despite skewed device clocks.
+  const hlcRef = useRef<number>(0);
 
   const applyPresence = useCallback((p: Presence) => {
     presenceRef.current = p;
     setPresenceState(p);
+  }, []);
+
+  const nextTs = useCallback(() => {
+    const t = Math.max(Date.now(), hlcRef.current + 1);
+    hlcRef.current = t;
+    return t;
   }, []);
 
   const pull = useCallback(
@@ -145,6 +158,27 @@ export function useSync(opts: SyncOpts): SyncApi {
             if (mf !== st.foods) st.setFoods(mf);
           }
           if ((d.updatedAt || 0) > (docTsRef.current || 0)) docTsRef.current = d.updatedAt || 0;
+        }
+        // Advance the hybrid logical clock past every ts we just observed so our
+        // next edit is ordered after anything already on the server.
+        {
+          let mx = hlcRef.current;
+          const scan = (arr: unknown) => {
+            if (!Array.isArray(arr)) return;
+            for (const it of arr) {
+              const o = it as { ts?: number; checkTs?: Record<string, number> };
+              if (o && typeof o.ts === 'number' && o.ts > mx) mx = o.ts;
+              if (o && o.checkTs) for (const k in o.checkTs) if (o.checkTs[k] > mx) mx = o.checkTs[k];
+            }
+          };
+          scan(d.activities);
+          scan(d.packing);
+          scan(d.foods);
+          const cm = (d.comments || {}) as Record<string, { ts?: number }[]>;
+          for (const k in cm) {
+            if (Array.isArray(cm[k])) for (const c of cm[k]) if (c && typeof c.ts === 'number' && c.ts > mx) mx = c.ts;
+          }
+          hlcRef.current = mx;
         }
         setStatus('live');
         setPresTick(Date.now());
@@ -350,6 +384,7 @@ export function useSync(opts: SyncOpts): SyncApi {
     presence,
     presTick,
     roomId: roomIdRef.current,
+    nextTs,
     touch,
     pushSoon,
   };

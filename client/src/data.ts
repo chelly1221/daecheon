@@ -70,6 +70,50 @@ export function mergeComments(local: Comments, remote: Comments): Comments {
  * `del` tombstone is monotonic — once either side deleted the item it stays
  * deleted, so a stale device can never resurrect it.
  */
+/** Fields whose set membership is merged per-member rather than clobbered by the
+ *  scalar last-write-wins (currently only a packing item's `checkedBy`). */
+interface Checkable {
+  checkedBy?: string[];
+  checkTs?: Record<string, number>;
+}
+
+/**
+ * Merge two versions' per-member check sets. Each member id is resolved by
+ * last-write-wins on its own `checkTs` toggle time, so two people checking the
+ * same personal item concurrently both stick, and an un-check is never
+ * resurrected by a stale device. Equal/legacy (ts 0) ties fall back to union.
+ */
+function mergeChecks(l: Checkable, r: Checkable): { checkedBy: string[]; checkTs: Record<string, number> } {
+  const lTs = l.checkTs || {};
+  const rTs = r.checkTs || {};
+  const lOn = new Set(l.checkedBy || []);
+  const rOn = new Set(r.checkedBy || []);
+  const ids = new Set<string>([...Object.keys(lTs), ...Object.keys(rTs), ...lOn, ...rOn]);
+  const checkedBy: string[] = [];
+  const checkTs: Record<string, number> = {};
+  for (const mid of [...ids].sort()) {
+    const lt = lTs[mid] || 0;
+    const rt = rTs[mid] || 0;
+    const on = rt > lt ? rOn.has(mid) : lt > rt ? lOn.has(mid) : lOn.has(mid) || rOn.has(mid);
+    const ts = lt > rt ? lt : rt;
+    if (ts) checkTs[mid] = ts;
+    if (on) checkedBy.push(mid);
+  }
+  return { checkedBy, checkTs };
+}
+
+function sameChecks(a: Checkable, m: { checkedBy: string[]; checkTs: Record<string, number> }): boolean {
+  const cb = a.checkedBy || [];
+  if (cb.length !== m.checkedBy.length) return false;
+  const s = new Set(cb);
+  for (const id of m.checkedBy) if (!s.has(id)) return false;
+  const ct = a.checkTs || {};
+  const mk = Object.keys(m.checkTs);
+  if (Object.keys(ct).length !== mk.length) return false;
+  for (const k of mk) if ((ct[k] || 0) !== m.checkTs[k]) return false;
+  return true;
+}
+
 function pickItem<T extends Identified>(local: T, remote: T | undefined): T {
   if (!remote) return local;
   const del = !!local.del || !!remote.del;
@@ -83,8 +127,18 @@ function pickItem<T extends Identified>(local: T, remote: T | undefined): T {
   if (rt > lt) winner = remote;
   else if (lt > rt) winner = local;
   else winner = JSON.stringify(remote) > JSON.stringify(local) ? remote : local;
-  if (!!winner.del === del) return winner;
-  return { ...winner, del };
+  let result: T = !!winner.del === del ? winner : { ...winner, del };
+  // Per-member check sets merge independently of the scalar winner, so a
+  // concurrent check by another member isn't lost when someone else's edit wins.
+  const lc = local as Checkable;
+  const rc = remote as Checkable;
+  if (lc.checkedBy || rc.checkedBy || lc.checkTs || rc.checkTs) {
+    const merged = mergeChecks(lc, rc);
+    if (!sameChecks(result as Checkable, merged)) {
+      result = { ...result, checkedBy: merged.checkedBy, checkTs: merged.checkTs };
+    }
+  }
+  return result;
 }
 
 /**
