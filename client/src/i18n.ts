@@ -110,6 +110,8 @@ export interface UIStrings {
   locMinAgo: string;
   recenter: string;
   fitAll: string;
+  full: string;
+  exitFull: string;
   locHint: string;
   mapSource: string;
 }
@@ -225,6 +227,8 @@ export const UI: Record<Lang, UIStrings> = {
     locMinAgo: '분 전',
     recenter: '내 위치',
     fitAll: '전체',
+    full: '전체화면',
+    exitFull: '전체화면 종료',
     locHint: '앱을 열어둔 동안, 함께 보는 사람에게만 위치가 보여요',
     mapSource: '© OpenStreetMap 기여자',
   },
@@ -338,6 +342,8 @@ export const UI: Record<Lang, UIStrings> = {
     locMinAgo: '分钟前',
     recenter: '我的位置',
     fitAll: '全部',
+    full: '全屏',
+    exitFull: '退出全屏',
     locHint: '仅在使用期间, 位置只对一起查看的人可见',
     mapSource: '© OpenStreetMap 贡献者',
   },

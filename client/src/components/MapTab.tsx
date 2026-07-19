@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as L from 'leaflet';
 import { css } from '../css';
 import type { UIStrings } from '../i18n';
@@ -96,6 +96,11 @@ export default function MapTab({
   onPlacedRef.current = onPlaced;
   const centerRef = useRef(center);
   centerRef.current = center;
+
+  // Fullscreen is a pure view concern (not synced): a CSS overlay that fills the
+  // viewport. We don't use the native Fullscreen API because iOS Safari doesn't
+  // support it for non-<video> elements — the mobile target here.
+  const [fullscreen, setFullscreen] = useState(false);
 
   const fitContent = () => {
     const map = mapRef.current;
@@ -277,6 +282,30 @@ export default function MapTab({
     if (el) el.style.cursor = placing ? 'crosshair' : '';
   }, [placing]);
 
+  // Entering/leaving fullscreen changes the container size dramatically — Leaflet
+  // must re-measure or tiles render for the old size (grey gaps / wrong center).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const t = window.setTimeout(() => map.invalidateSize(), 60);
+    return () => window.clearTimeout(t);
+  }, [fullscreen]);
+
+  // While fullscreen: lock the page behind it from scrolling and let Escape exit.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [fullscreen]);
+
   const shareErrText =
     shareError === 'denied' ? T.locDenied : shareError === 'unavailable' ? T.locUnavailable : '';
 
@@ -308,27 +337,45 @@ export default function MapTab({
       </div>
       <div style={css('font-size:12px;color:#8FAEC4;margin-top:-4px')}>{T.mapHint}</div>
 
-      {/* Map + overlays */}
+      {/* Map + overlays. Fullscreen = a fixed, viewport-filling overlay (escapes
+          the 430px frame); z-index 60 sits above the bottom nav (50) but below
+          the pin/edit sheets (95) so editing still works over it. */}
       <div
-        style={{
-          ...css(
-            'position:relative;width:100%;height:54vh;min-height:300px;max-height:440px;border-radius:16px;overflow:hidden;box-shadow:0 3px 12px rgba(60,130,190,.12);background:#DCEBF5',
-          ),
-          // Contain every Leaflet + overlay z-index in one stacking context so
-          // the controls can never paint over the bottom nav or an open sheet.
-          isolation: 'isolate',
-        }}
+        style={
+          fullscreen
+            ? {
+                ...css('position:fixed;overflow:hidden;background:#DCEBF5'),
+                inset: 0,
+                zIndex: 60,
+                isolation: 'isolate',
+              }
+            : {
+                ...css(
+                  'position:relative;width:100%;height:54vh;min-height:300px;max-height:440px;border-radius:16px;overflow:hidden;box-shadow:0 3px 12px rgba(60,130,190,.12);background:#DCEBF5',
+                ),
+                // Contain every Leaflet + overlay z-index in one stacking context
+                // so the controls never paint over the bottom nav or an open sheet.
+                isolation: 'isolate',
+              }
+        }
       >
         <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-        {/* Recenter / fit controls (siblings of the Leaflet pane → paint on top) */}
+        {/* Fullscreen / recenter / fit controls (paint on top of the Leaflet pane).
+            Top offset clears the notch/status bar when fullscreen. */}
         <div
           style={{
-            ...css('position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px'),
+            ...css('position:absolute;right:10px;display:flex;flex-direction:column;gap:6px'),
+            top: fullscreen ? 'calc(10px + env(safe-area-inset-top))' : '10px',
             zIndex: 1000,
             pointerEvents: 'none',
           }}
         >
+          <MapCtrlButton
+            icon={fullscreen ? 'fullscreen_exit' : 'fullscreen'}
+            label={fullscreen ? T.exitFull : T.full}
+            onTap={() => setFullscreen((f) => !f)}
+          />
           <MapCtrlButton icon="my_location" label={T.recenter} onTap={recenter} />
           <MapCtrlButton icon="fit_screen" label={T.fitAll} onTap={fitContent} />
         </div>
@@ -337,8 +384,9 @@ export default function MapTab({
           <div
             style={{
               ...css(
-                'position:absolute;top:10px;left:10px;right:56px;display:flex;align-items:center;gap:8px;background:rgba(11,124,216,.95);color:#FFFFFF;border-radius:12px;padding:9px 12px;box-shadow:0 3px 10px rgba(11,124,216,.35)',
+                'position:absolute;left:10px;right:56px;display:flex;align-items:center;gap:8px;background:rgba(11,124,216,.95);color:#FFFFFF;border-radius:12px;padding:9px 12px;box-shadow:0 3px 10px rgba(11,124,216,.35)',
               ),
+              top: fullscreen ? 'calc(10px + env(safe-area-inset-top))' : '10px',
               zIndex: 1000,
             }}
           >
@@ -357,6 +405,48 @@ export default function MapTab({
               )}
             >
               {T.cancel}
+            </button>
+          </div>
+        )}
+
+        {/* Fullscreen-only action bar — keeps 핀 추가 + 위치 공유 reachable while
+            the map fills the screen (their inline versions below are covered). */}
+        {fullscreen && (
+          <div
+            style={{
+              ...css('position:absolute;left:0;right:0;display:flex;justify-content:center;gap:10px;padding:0 14px'),
+              bottom: 'calc(16px + env(safe-area-inset-bottom))',
+              zIndex: 1000,
+              pointerEvents: 'none',
+            }}
+          >
+            <button
+              onClick={onArmNew}
+              style={{
+                ...css(
+                  'min-height:42px;padding:8px 16px;border-radius:999px;border:none;background:#0B7CD8;color:#FFFFFF;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;box-shadow:0 3px 10px rgba(20,90,150,.25)',
+                ),
+                pointerEvents: 'auto',
+              }}
+            >
+              <span style={css("font-family:'Material Symbols Rounded';font-size:19px;line-height:1")}>
+                add_location_alt
+              </span>
+              {T.pinAdd}
+            </button>
+            <button
+              onClick={onToggleShare}
+              style={{
+                ...css(
+                  `min-height:42px;padding:8px 16px;border-radius:999px;border:1.5px solid ${sharing ? '#1FAF6B' : '#BBDCF2'};background:${sharing ? '#1FAF6B' : '#FFFFFF'};color:${sharing ? '#FFFFFF' : '#0B7CD8'};font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;box-shadow:0 3px 10px rgba(20,90,150,.25)`,
+                ),
+                pointerEvents: 'auto',
+              }}
+            >
+              <span style={css("font-family:'Material Symbols Rounded';font-size:19px;line-height:1")}>
+                {sharing ? 'location_on' : 'share_location'}
+              </span>
+              {sharing ? T.shareOn : T.shareLoc}
             </button>
           </div>
         )}
