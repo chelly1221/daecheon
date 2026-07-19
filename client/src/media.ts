@@ -12,6 +12,107 @@ export function mediaUrl(roomId: string, file: string): string {
   return `/api/media/${encodeURIComponent(roomId)}/${encodeURIComponent(file)}`;
 }
 
+/** One item to hand off to the OS save/share flow. */
+export interface SaveItem {
+  url: string;
+  kind: 'image' | 'video';
+}
+
+/** Derive a friendly download filename (keeps the stored file's extension). */
+function saveName(url: string, kind: 'image' | 'video', i: number): string {
+  let ext = '';
+  try {
+    const path = new URL(url, location.href).pathname;
+    const dot = path.lastIndexOf('.');
+    if (dot > path.lastIndexOf('/')) ext = path.slice(dot);
+  } catch {
+    /* keep ext empty */
+  }
+  if (!ext) ext = kind === 'video' ? '.mp4' : '.jpg';
+  return `daecheon-${String(i + 1).padStart(2, '0')}${ext}`;
+}
+
+/** Directly trigger a same-origin download via a synthetic anchor (no fetch). */
+function anchorDownload(url: string, name: string) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/** How a save request was fulfilled — lets the caller show honest feedback. */
+export type SaveOutcome = 'shared' | 'downloaded' | 'canceled';
+
+/**
+ * Save/share the given gallery items. On devices with the Web Share file API
+ * (iOS/Android) hand the binaries to the native share sheet so the user can
+ * "Save to Photos"/Files; on desktop fall back to direct same-origin
+ * `<a download>` (which those browsers honor). A genuine share failure is
+ * *thrown*, never silently downgraded to the anchor fallback — on iOS that
+ * fallback is a no-op, so pretending it worked would hide a lost file.
+ *
+ * Note: the share sheet needs every file resident at once, so a very large
+ * multi-video batch is memory-heavy — save videos in small batches.
+ */
+export async function saveMedia(items: SaveItem[]): Promise<SaveOutcome> {
+  if (!items.length) return 'canceled';
+  const nav = navigator as Navigator & {
+    canShare?: (data?: unknown) => boolean;
+    share?: (data: unknown) => Promise<void>;
+  };
+
+  // Probe file-share support with a dummy File first, so a desktop browser
+  // (share() exists but can't share files) skips fetching every blob just to
+  // discard it and fall back anyway.
+  let canShareFiles = false;
+  if (typeof nav.share === 'function' && typeof nav.canShare === 'function') {
+    try {
+      canShareFiles = nav.canShare({
+        files: [new File([new Uint8Array(1)], 'probe.jpg', { type: 'image/jpeg' })],
+      });
+    } catch {
+      canShareFiles = false;
+    }
+  }
+
+  if (canShareFiles) {
+    // Fetch one at a time (not Promise.all): a slow/failed item surfaces early
+    // and we avoid opening N concurrent network buffers.
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const res = await fetch(items[i].url);
+      if (!res.ok) throw new Error(`fetch ${res.status}`);
+      const blob = await res.blob();
+      files.push(
+        new File([blob], saveName(items[i].url, items[i].kind, i), {
+          type: blob.type || (items[i].kind === 'video' ? 'video/mp4' : 'image/jpeg'),
+        }),
+      );
+    }
+    try {
+      await nav.share!({ files });
+      return 'shared';
+    } catch (err) {
+      // User dismissed the sheet — a no-op, not a failure.
+      if (err instanceof DOMException && err.name === 'AbortError') return 'canceled';
+      // Anything else (e.g. transient activation expired → NotAllowedError) is a
+      // real failure the caller must surface.
+      throw err instanceof Error ? err : new Error('share failed');
+    }
+  }
+
+  // No file-share support (desktop): direct same-origin downloads, staggered so
+  // the browser doesn't drop all but the first when fired back to back.
+  for (let i = 0; i < items.length; i++) {
+    anchorDownload(items[i].url, saveName(items[i].url, items[i].kind, i));
+    if (i < items.length - 1) await new Promise((r) => setTimeout(r, 350));
+  }
+  return 'downloaded';
+}
+
 // Video content types the server accepts (must mirror MIME_EXT in server/index.js).
 // Images are always recompressed to JPEG client-side, so only videos are checked.
 const VIDEO_MIME = new Set(['video/mp4', 'video/webm', 'video/quicktime']);

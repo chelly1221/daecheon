@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { css } from './css';
-import { KEY, MEMBERS, defaultDoc, normLink } from './data';
+import { KEY, MEMBERS, TIDES, defaultDoc, normLink } from './data';
 import {
   ACT_DESC_ZH,
   FOOD_MEMO_ZH,
@@ -120,6 +120,9 @@ export default function App() {
   // In-flight/failed gallery uploads live here (not in PhotoTab) so switching
   // tabs mid-upload can't discard a failure's error/retry affordance.
   const [uploads, setUploads] = useState<PhotoUpload[]>([]);
+  // True while the album tab is in multi-select mode — gates the tab swipe so a
+  // grid drag can't remount PhotoTab and drop the selection (see swipeArmed).
+  const [photoSelecting, setPhotoSelecting] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [detail, setDetail] = useState<{ list: ListKey; id: string } | null>(null);
@@ -296,6 +299,14 @@ export default function App() {
     setPhotos((prev) => prev.map((p) => (p.id !== id ? p : { ...p, del: true, ts: now })));
     sync.pushSoon();
   };
+  // Bulk soft-delete (selection mode): one monotonic tombstone sweep + one push.
+  const deletePhotos = (ids: string[]) => {
+    if (!ids.length) return;
+    const gone = new Set(ids);
+    const now = sync.nextTs();
+    setPhotos((prev) => prev.map((p) => (gone.has(p.id) && !p.del ? { ...p, del: true, ts: now } : p)));
+    sync.pushSoon();
+  };
   const patchUpload = (key: string, p: Partial<PhotoUpload>) =>
     setUploads((u) => u.map((x) => (x.key === key ? { ...x, ...p } : x)));
   const runUpload = async (up: PhotoUpload) => {
@@ -453,7 +464,10 @@ export default function App() {
   // disabled on the start screen and while any overlay is open (their own
   // touches shouldn't bubble into a tab change).
   const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null);
-  const swipeArmed = () => !!me && !sheet && !detail && !profileOpen;
+  // Suppressed while the album is in multi-select mode too — otherwise a
+  // horizontal drag over the grid would change tabs and remount PhotoTab,
+  // silently discarding the in-progress selection.
+  const swipeArmed = () => !!me && !sheet && !detail && !profileOpen && !photoSelecting;
   const onTouchStart = (e: TouchEvent) => {
     if (!swipeArmed() || e.touches.length !== 1) {
       swipeRef.current = null;
@@ -585,6 +599,11 @@ export default function App() {
     ...w,
     date: w.date + ' (' + (zh ? ZH_DAYS[i] || '' : KO_DAYS[i] || '') + ')',
     desc: zh ? WDESC_ZH[w.desc] || w.desc : w.desc,
+  }));
+  // Static KHOA tide table + the same localized weekday labels the weather cards use.
+  const tideDays = TIDES.map((t, i) => ({
+    ...t,
+    dow: zh ? ZH_DAYS[i] || '' : KO_DAYS[i] || '',
   }));
   const weatherNote =
     weatherStatus === 'live'
@@ -740,7 +759,9 @@ export default function App() {
         by: who.name,
         color: who.color,
         time: fmtDateTime(p.ts),
-        canDelete: !!me && p.by === me,
+        // Shared trip album (5 trusted members): anyone can remove any item, so
+        // "select all → delete" and bulk cleanup work regardless of uploader.
+        canDelete: !!me,
         w: p.w,
         h: p.h,
         dur: p.dur,
@@ -799,6 +820,7 @@ export default function App() {
                   lang={lang}
                   weatherDays={weatherDays}
                   weatherNote={weatherNote}
+                  tides={tideDays}
                   hours={weatherHours}
                   live={weatherStatus === 'live'}
                 />
@@ -829,6 +851,8 @@ export default function App() {
                   onPickFiles={pickPhotoFiles}
                   onRetry={runUpload}
                   onDelete={deletePhoto}
+                  onDeleteMany={deletePhotos}
+                  onSelectingChange={setPhotoSelecting}
                 />
               )}
             </div>

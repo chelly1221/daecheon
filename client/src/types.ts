@@ -153,6 +153,28 @@ export interface Weather {
 
 export type WeatherStatus = 'loading' | 'live' | 'avg';
 
+/** One tide extreme (a single high or low water) from the KHOA prediction. */
+export interface TideExtreme {
+  /** Local clock time, Asia/Seoul, `HH:MM` 24-hour. */
+  t: string;
+  /** Predicted water height in cm above chart datum (약최저저조면). */
+  cm: number;
+}
+
+/**
+ * A day's astronomical tide prediction for the trip location (KHOA 보령 station,
+ * off 대천해수욕장). Static reference data — tides are fixed years ahead, so this
+ * ships baked in (see `TIDES` in data.ts) rather than fetched.
+ */
+export interface TideDay {
+  /** `M/D` date label, matching {@link Weather.date}. */
+  date: string;
+  /** Low tides (간조/썰물) — the flat is exposed; ordered by time. */
+  lows: TideExtreme[];
+  /** High tides (만조/밀물) — water is in; ordered by time. */
+  highs: TideExtreme[];
+}
+
 /** One hour of the live forecast, shown in the tap-through detail sheet. */
 export interface WeatherHour {
   /** Hour of day 0–23 in Asia/Seoul. */

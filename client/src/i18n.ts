@@ -71,10 +71,22 @@ export interface UIStrings {
   unsupportedMedia: string;
   mediaReadFail: string;
   photoDeleteAsk: string;
+  photoDeleteManyAsk: string;
+  photoSelect: string;
+  photoSelAll: string;
+  photoSelClear: string;
+  photoDownload: string;
+  photoPreparing: string;
+  photoSaveFail: string;
   cancel: string;
   wHourly: string;
   wFeels: string;
   wSource: string;
+  tide: string;
+  tideLow: string;
+  tideHigh: string;
+  tideHint: string;
+  tideSource: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -138,7 +150,7 @@ export const UI: Record<Lang, UIStrings> = {
     filterAll: '전체보기',
     searchPh: '준비물 검색',
     noResult: '검색 결과가 없어요',
-    photo: '사진',
+    photo: '앨범',
     photoHint: '함께 찍은 사진·영상을 모아요',
     photoEmpty: '아직 사진이 없어요 · 첫 사진을 올려보세요',
     photoAdd: '+ 올리기',
@@ -149,10 +161,22 @@ export const UI: Record<Lang, UIStrings> = {
     unsupportedMedia: '지원하지 않는 형식이에요',
     mediaReadFail: '파일을 읽을 수 없어요',
     photoDeleteAsk: '이 사진을 삭제할까요?',
+    photoDeleteManyAsk: '선택한 항목을 삭제할까요?',
+    photoSelect: '선택',
+    photoSelAll: '전체선택',
+    photoSelClear: '해제',
+    photoDownload: '다운로드',
+    photoPreparing: '준비 중…',
+    photoSaveFail: '저장에 실패했어요',
     cancel: '취소',
     wHourly: '시간별 예보',
     wFeels: '체감',
     wSource: '대천해수욕장 · Open-Meteo',
+    tide: '물때',
+    tideLow: '간조',
+    tideHigh: '만조',
+    tideHint: '간조엔 갯벌이 넓게 드러나요 · 갯벌·머드 놀기 좋은 시간!',
+    tideSource: '대천해수욕장(보령) 기준 · 국립해양조사원 조석예보',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -214,7 +238,7 @@ export const UI: Record<Lang, UIStrings> = {
     filterAll: '全部',
     searchPh: '搜索行李',
     noResult: '没有搜索结果',
-    photo: '照片',
+    photo: '相册',
     photoHint: '一起收藏拍下的照片·视频',
     photoEmpty: '还没有照片 · 上传第一张吧',
     photoAdd: '+ 上传',
@@ -225,10 +249,22 @@ export const UI: Record<Lang, UIStrings> = {
     unsupportedMedia: '不支持的格式',
     mediaReadFail: '无法读取文件',
     photoDeleteAsk: '删除这张照片吗?',
+    photoDeleteManyAsk: '删除选中的项目吗?',
+    photoSelect: '选择',
+    photoSelAll: '全选',
+    photoSelClear: '取消',
+    photoDownload: '下载',
+    photoPreparing: '准备中…',
+    photoSaveFail: '保存失败',
     cancel: '取消',
     wHourly: '每小时预报',
     wFeels: '体感',
     wSource: '大川海水浴场 · Open-Meteo',
+    tide: '潮汐',
+    tideLow: '干潮',
+    tideHigh: '满潮',
+    tideHint: '干潮时滩涂大面积显露 · 赶海·玩泥浆正当时!',
+    tideSource: '大川海水浴场(保宁) · 韩国国立海洋调查院潮汐预报',
   },
 };
 

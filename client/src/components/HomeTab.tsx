@@ -1,21 +1,31 @@
 import { useState } from 'react';
 import { css } from '../css';
 import type { UIStrings } from '../i18n';
-import type { Lang, Weather, WeatherHours } from '../types';
+import type { Lang, TideExtreme, Weather, WeatherHours } from '../types';
 import WeatherDetail from './WeatherDetail';
+
+/** A trip day's tides with its localized weekday label, as prepared in App. */
+export interface TideDayVM {
+  date: string;
+  dow: string;
+  lows: TideExtreme[];
+  highs: TideExtreme[];
+}
 
 interface Props {
   L: UIStrings;
   lang: Lang;
   weatherDays: Weather[];
   weatherNote: string;
+  /** Per-day KHOA tide prediction (간조/만조 times) for the three trip days. */
+  tides: TideDayVM[];
   /** Live hourly forecast keyed by {@link Weather.key}, or null before it lands. */
   hours: WeatherHours | null;
   /** True once the live forecast is in — gates the tap-through detail sheet. */
   live: boolean;
 }
 
-export default function HomeTab({ L, lang, weatherDays, weatherNote, hours, live }: Props) {
+export default function HomeTab({ L, lang, weatherDays, weatherNote, tides, hours, live }: Props) {
   // The date key of the day whose hourly sheet is open, if any.
   const [openKey, setOpenKey] = useState<string | null>(null);
   const openDay = openKey ? weatherDays.find((d) => d.key === openKey) : null;
@@ -70,6 +80,47 @@ export default function HomeTab({ L, lang, weatherDays, weatherNote, hours, live
           ))}
         </div>
         <div style={css('font-size:11.5px;color:#8FAEC4;line-height:1.5')}>{weatherNote}</div>
+      </div>
+
+      {/* Tides — KHOA prediction; low tide (간조) exposes the flat for mud/갯벌 play */}
+      <div
+        style={css(
+          'background:#FFFFFF;border-radius:18px;padding:13px;box-shadow:0 3px 14px rgba(60,130,190,.08);display:flex;flex-direction:column;gap:9px',
+        )}
+      >
+        <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>
+          <div style={css("font-family:'Jua',sans-serif;font-size:17px;color:#164A6B")}>
+            {L.tide}
+          </div>
+          <div style={css('display:flex;align-items:center;gap:11px;font-size:11.5px')}>
+            <span style={css('display:flex;align-items:center;gap:4px;color:#9A6B33')}>
+              <span
+                style={css('width:7px;height:7px;border-radius:50%;background:#C08A3E;flex:none')}
+              />
+              {L.tideLow}
+            </span>
+            <span style={css('display:flex;align-items:center;gap:4px;color:#3B7BB0')}>
+              <span
+                style={css('width:7px;height:7px;border-radius:50%;background:#0B7CD8;flex:none')}
+              />
+              {L.tideHigh}
+            </span>
+          </div>
+        </div>
+        <div style={css('display:flex;flex-direction:column')}>
+          {tides.map((t, i) => (
+            <TideRow key={t.date} t={t} L={L} first={i === 0} />
+          ))}
+        </div>
+        <div
+          style={css(
+            'display:flex;align-items:flex-start;gap:6px;background:#FBF3E7;border-radius:11px;padding:8px 10px',
+          )}
+        >
+          <span style={css('font-size:13px;line-height:1.5;flex:none')}>💡</span>
+          <span style={css('font-size:11.5px;color:#8A6A44;line-height:1.5')}>{L.tideHint}</span>
+        </div>
+        <div style={css('font-size:11px;color:#9FBBD0;line-height:1.5')}>{L.tideSource}</div>
       </div>
 
       {/* Stay info */}
@@ -172,6 +223,55 @@ function DayCard({
     >
       {inner}
     </button>
+  );
+}
+
+function TideRow({ t, L, first }: { t: TideDayVM; L: UIStrings; first: boolean }) {
+  return (
+    <div
+      style={css(
+        'display:flex;align-items:center;gap:11px;padding:8px 2px' +
+          (first ? '' : ';border-top:1px solid #F0F5F9'),
+      )}
+    >
+      {/* Date + weekday, mirroring the weather card's day label */}
+      <div
+        style={css(
+          'flex:none;width:50px;display:flex;flex-direction:column;align-items:flex-start;gap:1px',
+        )}
+      >
+        <span style={css('font-weight:700;font-size:13.5px;color:#22597C')}>{t.date}</span>
+        <span style={css('font-size:11px;color:#8FB4CC')}>{t.dow}</span>
+      </div>
+      {/* 간조 (emphasized — the mud/flat window) above 만조 (muted) */}
+      <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;gap:3px')}>
+        <TideLine label={L.tideLow} times={t.lows} strong />
+        <TideLine label={L.tideHigh} times={t.highs} />
+      </div>
+    </div>
+  );
+}
+
+function TideLine({
+  label,
+  times,
+  strong,
+}: {
+  label: string;
+  times: TideExtreme[];
+  strong?: boolean;
+}) {
+  const chip = strong ? 'color:#9A6B33;background:#F5E7D2' : 'color:#3B7BB0;background:#E9F2FA';
+  const time = strong ? 'font-size:14px;font-weight:700;color:#7A4E1E' : 'font-size:13px;font-weight:600;color:#4E7590';
+  return (
+    <div style={css('display:flex;align-items:center;gap:8px')}>
+      <span
+        style={css(`flex:none;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;${chip}`)}
+      >
+        {label}
+      </span>
+      <span style={css(`${time};letter-spacing:.3px`)}>{times.map((x) => x.t).join('   ·   ')}</span>
+    </div>
   );
 }
 

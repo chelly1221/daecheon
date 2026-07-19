@@ -6,6 +6,7 @@ import type {
   Identified,
   Member,
   PackItem,
+  TideDay,
   TripDoc,
 } from './types';
 
@@ -204,6 +205,31 @@ export function adoptItems<T extends Identified>(local: T[], remote: T[]): T[] {
   }
   return out;
 }
+
+/**
+ * KHOA (국립해양조사원) astronomical tide prediction for the 보령 station, off
+ * 대천해수욕장, on the three trip days. Times are Asia/Seoul (HH:MM); heights are
+ * cm above chart datum (약최저저조면). Fixed data (predicted years ahead), so it
+ * ships baked in — no runtime fetch. Verified against KHOA / badatime tables.
+ * Low tide (간조) exposes the wide tidal flat — the window for 갯벌/머드 play.
+ */
+export const TIDES: TideDay[] = [
+  {
+    date: '8/4',
+    lows: [{ t: '01:05', cm: 124 }, { t: '13:31', cm: 128 }],
+    highs: [{ t: '06:33', cm: 711 }, { t: '18:57', cm: 676 }],
+  },
+  {
+    date: '8/5',
+    lows: [{ t: '01:41', cm: 161 }, { t: '14:04', cm: 142 }],
+    highs: [{ t: '07:09', cm: 681 }, { t: '19:44', cm: 661 }],
+  },
+  {
+    date: '8/6',
+    lows: [{ t: '02:22', cm: 211 }, { t: '14:43', cm: 164 }],
+    highs: [{ t: '07:53', cm: 639 }, { t: '20:43', cm: 638 }],
+  },
+];
 
 export const MEMBERS: Member[] = [
   { id: 'm1', name: '石甜筒', color: '#E8503A' },
