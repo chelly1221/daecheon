@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { css } from './css';
-import { KEY, MEMBERS, TIDES, defaultDoc, normLink } from './data';
+import { KEY, MEMBERS, RESORT, TIDES, defaultDoc, normLink, pinCatDef } from './data';
 import {
   ACT_DESC_ZH,
   FOOD_MEMO_ZH,
@@ -25,11 +25,24 @@ import type {
   MediaRef,
   PackItem,
   Photo,
+  Pin,
+  PinCat,
+  SharedLoc,
   SheetState,
   Tab,
   Weather,
 } from './types';
-import type { ActView, AsgChip, AsgTab, FoodView, PackView, PhotoView } from './viewmodels';
+import type {
+  ActView,
+  AsgChip,
+  AsgTab,
+  FoodView,
+  LiveLocView,
+  PackView,
+  PhotoView,
+  PinView,
+  PlaceMode,
+} from './viewmodels';
 import Header from './components/Header';
 import StartScreen from './components/StartScreen';
 import type { MeChip } from './components/StartScreen';
@@ -37,6 +50,8 @@ import HomeTab from './components/HomeTab';
 import ActivitiesTab from './components/ActivitiesTab';
 import PackingTab from './components/PackingTab';
 import FoodTab from './components/FoodTab';
+import MapTab from './components/MapTab';
+import PinSheet from './components/PinSheet';
 import PhotoTab from './components/PhotoTab';
 import BottomNav from './components/BottomNav';
 import type { NavItem } from './components/BottomNav';
@@ -55,6 +70,7 @@ interface Initial {
   packing: PackItem[];
   foods: Food[];
   photos: Photo[];
+  pins: Pin[];
   comments: Comments;
 }
 
@@ -77,6 +93,7 @@ function loadInitial(): Initial {
         packing: j.packing || d.packing,
         foods: j.foods || d.foods,
         photos: Array.isArray(j.photos) ? j.photos : d.photos,
+        pins: Array.isArray(j.pins) ? j.pins : d.pins,
         comments: j.comments && typeof j.comments === 'object' ? j.comments : {},
       };
     }
@@ -98,6 +115,7 @@ const NAV_DEFS: [Tab, string][] = [
   ['act', 'surfing'],
   ['pack', 'checklist'],
   ['food', 'restaurant'],
+  ['map', 'map'],
   ['photo', 'photo_library'],
 ];
 // Left→right tab order for swipe navigation (single source of truth = the nav).
@@ -116,6 +134,7 @@ export default function App() {
   const [packing, setPacking] = useState<PackItem[]>(initial.packing);
   const [foods, setFoods] = useState<Food[]>(initial.foods);
   const [photos, setPhotos] = useState<Photo[]>(initial.photos);
+  const [pins, setPins] = useState<Pin[]>(initial.pins);
   const [comments, setComments] = useState<Comments>(initial.comments);
   // In-flight/failed gallery uploads live here (not in PhotoTab) so switching
   // tabs mid-upload can't discard a failure's error/retry affordance.
@@ -132,6 +151,20 @@ export default function App() {
   const [fCat, setFCat] = useState<'shared' | 'personal'>('shared');
   const [fAsg, setFAsg] = useState<string[]>([]);
   const [slideDir, setSlideDir] = useState(0); // tab-change direction for the slide anim
+  // Map: pin editor sheet, pin-placement arming, and live location sharing.
+  const [pinSheet, setPinSheet] = useState<{
+    mode: 'add' | 'edit';
+    id?: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [pName, setPName] = useState('');
+  const [pMemo, setPMemo] = useState('');
+  const [pCat, setPCat] = useState<PinCat>('place');
+  const [placing, setPlacing] = useState<PlaceMode | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<'denied' | 'unavailable' | null>(null);
+  const [myLoc, setMyLocState] = useState<SharedLoc | null>(null);
 
   const { days, hours: weatherHours, status: weatherStatus } = useWeather();
   const sync = useSync({
@@ -141,11 +174,13 @@ export default function App() {
     packing,
     foods,
     photos,
+    pins,
     comments,
     setActivities,
     setPacking,
     setFoods,
     setPhotos,
+    setPins,
     setComments,
   });
 
@@ -158,6 +193,58 @@ export default function App() {
     }
   }, [lang]);
 
+  // Live location sharing. While `sharing` is on, watch the device position and
+  // feed each fix into our presence entry (throttled to keep sync traffic sane);
+  // heartbeat/poll then propagate it to everyone. Turning it off — or any
+  // geolocation error — clears the broadcast so peers drop our marker promptly.
+  const { setMyLoc, pushSoon } = sync;
+  useEffect(() => {
+    if (!sharing) return;
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      setShareError('unavailable');
+      setSharing(false);
+      return;
+    }
+    let lastPush = 0;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        setShareError(null);
+        const loc: SharedLoc = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          acc: Number.isFinite(pos.coords.accuracy) ? Math.round(pos.coords.accuracy) : undefined,
+          ts: Date.now(),
+        };
+        setMyLocState(loc);
+        setMyLoc(loc);
+        const now = Date.now();
+        if (now - lastPush > 8000) {
+          lastPush = now;
+          pushSoon({ silent: true });
+        }
+      },
+      (err) => {
+        // Only a denied permission is fatal. POSITION_UNAVAILABLE / TIMEOUT are
+        // transient on a continuous watch (tunnel, building, slow fix) — the
+        // browser keeps the watch running, so leave it alone and surface a soft
+        // hint that the next successful fix clears. Tearing the watch down here
+        // (setSharing(false)) would make one GPS blip end sharing for good.
+        if (err.code === err.PERMISSION_DENIED) {
+          setShareError('denied');
+          setSharing(false);
+          return;
+        }
+        setShareError('unavailable');
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 },
+    );
+    return () => {
+      navigator.geolocation.clearWatch(id);
+      setMyLocState(null);
+      setMyLoc(null);
+      pushSoon({ silent: true });
+    };
+  }, [sharing, setMyLoc, pushSoon]);
 
   const zh = lang === 'zh';
   const L = UI[zh ? 'zh' : 'ko'];
@@ -212,6 +299,9 @@ export default function App() {
     const ni = TAB_ORDER.indexOf(t);
     setSlideDir(ni < oi ? -1 : 1);
     setTab(t);
+    // Leaving the map disarms any pin placement — otherwise `placing` would stay
+    // set and silently kill tab-swipe on every tab with no way to cancel there.
+    if (placing) setPlacing(null);
     sync.pushSoon({ silent: true });
   };
   const openAdd = (list: ListKey) => {
@@ -306,6 +396,82 @@ export default function App() {
     const now = sync.nextTs();
     setPhotos((prev) => prev.map((p) => (gone.has(p.id) && !p.del ? { ...p, del: true, ts: now } : p)));
     sync.pushSoon();
+  };
+
+  // --- Map: pins + location sharing -----------------------------------------
+  const onToggleShare = () => {
+    setShareError(null);
+    setSharing((s) => !s);
+  };
+  // Arm the map so the next tap drops a new pin (opens the editor at that point).
+  const armNewPin = () => {
+    setPinSheet(null);
+    setPlacing({ kind: 'new' });
+  };
+  const cancelPlace = () => setPlacing(null);
+  const openPinEdit = (p: Pin) => {
+    setPlacing(null); // opening an editor cancels any armed placement/move
+    sync.touch(p.id); // broadcast a "수정 중" marker, like the list editors
+    setPinSheet({ mode: 'edit', id: p.id, lat: p.lat, lng: p.lng });
+    setPName(p.label);
+    setPMemo(p.memo || '');
+    setPCat(p.cat);
+  };
+  // A tap on the armed map: place the new pin's editor, or reposition an existing pin.
+  const onPlaced = (lat: number, lng: number) => {
+    const mode = placing;
+    setPlacing(null);
+    if (!mode) return;
+    if (mode.kind === 'new') {
+      setPinSheet({ mode: 'add', lat, lng });
+      setPName('');
+      setPMemo('');
+      setPCat('place');
+    } else {
+      const now = sync.nextTs();
+      setPins((prev) => prev.map((p) => (p.id !== mode.id ? p : { ...p, lat, lng, ts: now })));
+      sync.pushSoon();
+    }
+  };
+  const pinSheetSave = () => {
+    if (!pinSheet) return;
+    const label = pName.trim();
+    if (!label) return;
+    const memo = pMemo.trim();
+    const now = sync.nextTs();
+    if (pinSheet.mode === 'add') {
+      const pin: Pin = {
+        id: myDev + '-' + now.toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+        lat: pinSheet.lat,
+        lng: pinSheet.lng,
+        label,
+        memo,
+        cat: pCat,
+        by: me,
+        ts: now,
+      };
+      setPins((prev) => [...prev, pin]);
+    } else {
+      const id = pinSheet.id;
+      setPins((prev) => prev.map((p) => (p.id !== id ? p : { ...p, label, memo, cat: pCat, ts: now })));
+    }
+    setPinSheet(null);
+    sync.pushSoon();
+  };
+  const pinSheetDelete = () => {
+    if (!pinSheet || pinSheet.mode !== 'edit' || !pinSheet.id) return;
+    const id = pinSheet.id;
+    const now = sync.nextTs();
+    // Soft-delete tombstone, same monotonic scheme as the other lists.
+    setPins((prev) => prev.map((p) => (p.id !== id ? p : { ...p, del: true, ts: now })));
+    setPinSheet(null);
+    sync.pushSoon();
+  };
+  const pinSheetMove = () => {
+    if (!pinSheet || pinSheet.mode !== 'edit' || !pinSheet.id) return;
+    const id = pinSheet.id;
+    setPinSheet(null);
+    setPlacing({ kind: 'move', id }); // next map tap sets the new location
   };
   const patchUpload = (key: string, p: Partial<PhotoUpload>) =>
     setUploads((u) => u.map((x) => (x.key === key ? { ...x, ...p } : x)));
@@ -467,9 +633,17 @@ export default function App() {
   // Suppressed while the album is in multi-select mode too — otherwise a
   // horizontal drag over the grid would change tabs and remount PhotoTab,
   // silently discarding the in-progress selection.
-  const swipeArmed = () => !!me && !sheet && !detail && !profileOpen && !photoSelecting;
+  const swipeArmed = () =>
+    !!me && !sheet && !detail && !profileOpen && !photoSelecting && !pinSheet && !placing;
   const onTouchStart = (e: TouchEvent) => {
     if (!swipeArmed() || e.touches.length !== 1) {
+      swipeRef.current = null;
+      return;
+    }
+    // A gesture that starts on the Leaflet map is the map's own pan/zoom, never a
+    // tab swipe — otherwise dragging the map sideways would flip tabs.
+    const el = e.target as HTMLElement | null;
+    if (el && typeof el.closest === 'function' && el.closest('.leaflet-container')) {
       swipeRef.current = null;
       return;
     }
@@ -768,10 +942,92 @@ export default function App() {
       };
     });
 
+  // Map: non-deleted pins → view models (category glyph/colour resolved).
+  const pinViews: PinView[] = pins
+    .filter((p) => !p.del)
+    .map((p) => {
+      const def = pinCatDef(p.cat);
+      const who = p.by ? whoOf(p.by) : null;
+      return {
+        id: p.id,
+        label: p.label,
+        memo: p.memo || '',
+        memoShow: !!(p.memo && p.memo.trim()),
+        cat: def.id,
+        emoji: def.emoji,
+        color: def.color,
+        catLabel: zh ? def.zh : def.ko,
+        by: who ? who.name : '',
+        lat: p.lat,
+        lng: p.lng,
+        edChips: edFor(p.id),
+        onTap: () => openPinEdit(p),
+      };
+    });
+
+  // Live shared locations from presence (+ my own fix, rendered fresh). A marker
+  // shows while the peer's presence is alive (so a stationary sharer whose fix
+  // isn't re-firing doesn't vanish); it's gated on the same presence-liveness
+  // window as the rest of presence, not on the fix time. The age label still
+  // reflects the true fix time (clamped to ≥0 so a skewed clock can't go negative).
+  const ageLabel = (ms: number) => (ms < 60000 ? L.locFresh : Math.floor(ms / 60000) + L.locMinAgo);
+  const liveLocs: LiveLocView[] = (() => {
+    const out: LiveLocView[] = [];
+    const now = Date.now();
+    for (const key of Object.keys(presence)) {
+      if (key === myDev) continue;
+      const p = presence[key];
+      const loc = p.loc;
+      if (!loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') continue;
+      if (now - (p.ts || 0) > 120000) continue;
+      const m = MEMBERS.find((x) => x.id === p.mid);
+      const name = m ? m.name : zh ? '有人' : '누군가';
+      out.push({
+        key,
+        name,
+        initial: name.slice(0, 1),
+        color: m ? m.color : '#8AA5B8',
+        lat: loc.lat,
+        lng: loc.lng,
+        acc: loc.acc,
+        isMe: false,
+        age: ageLabel(Math.max(0, now - (loc.ts || 0))),
+      });
+    }
+    if (sharing && myLoc) {
+      const name = meMember ? meMember.name : L.locMe;
+      out.push({
+        key: myDev,
+        name,
+        initial: name.slice(0, 1),
+        color: myColor,
+        lat: myLoc.lat,
+        lng: myLoc.lng,
+        acc: myLoc.acc,
+        isMe: true,
+        age: L.locFresh,
+      });
+    }
+    return out;
+  })();
+  const sharingCount = liveLocs.length;
+
+  const pinSheetTitle = pinSheet ? (pinSheet.mode === 'add' ? L.pinAddTitle : L.pinEditTitle) : '';
+  const pinSaveLabel = pinSheet
+    ? pinSheet.mode === 'add'
+      ? zh
+        ? '添加'
+        : '추가'
+      : zh
+        ? '保存'
+        : '저장'
+    : '';
+
   const isHome = !!me && tab === 'home';
   const isAct = !!me && tab === 'act';
   const isPack = !!me && tab === 'pack';
   const isFood = !!me && tab === 'food';
+  const isMap = !!me && tab === 'map';
   const isPhoto = !!me && tab === 'photo';
 
   return (
@@ -842,6 +1098,23 @@ export default function App() {
                 />
               )}
               {isFood && <FoodTab L={L} lang={lang} foods={foodList} onAdd={() => openAdd('foods')} />}
+              {isMap && (
+                <MapTab
+                  L={L}
+                  lang={lang}
+                  pins={pinViews}
+                  liveLocs={liveLocs}
+                  center={RESORT}
+                  sharing={sharing}
+                  shareError={shareError}
+                  placing={placing}
+                  sharingCount={sharingCount}
+                  onToggleShare={onToggleShare}
+                  onArmNew={armNewPin}
+                  onCancelPlace={cancelPlace}
+                  onPlaced={onPlaced}
+                />
+              )}
               {isPhoto && (
                 <PhotoTab
                   L={L}
@@ -908,6 +1181,25 @@ export default function App() {
             onSave={sheetSave}
             onDelete={doDelete}
             onClose={() => setSheet(null)}
+          />
+        )}
+        {pinSheet && (
+          <PinSheet
+            L={L}
+            lang={lang}
+            title={pinSheetTitle}
+            saveLabel={pinSaveLabel}
+            isEdit={pinSheet.mode === 'edit'}
+            fName={pName}
+            fMemo={pMemo}
+            fCat={pCat}
+            onName={setPName}
+            onMemo={setPMemo}
+            onCat={setPCat}
+            onSave={pinSheetSave}
+            onDelete={pinSheetDelete}
+            onMove={pinSheetMove}
+            onClose={() => setPinSheet(null)}
           />
         )}
       </div>

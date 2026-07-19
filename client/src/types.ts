@@ -1,5 +1,5 @@
 export type Lang = 'ko' | 'zh';
-export type Tab = 'home' | 'act' | 'pack' | 'food' | 'photo';
+export type Tab = 'home' | 'act' | 'pack' | 'food' | 'map' | 'photo';
 export type ListKey = 'activities' | 'packing' | 'foods';
 export type SyncStatus = 'connecting' | 'live' | 'error' | 'local';
 
@@ -78,6 +78,44 @@ export interface MediaRef {
   dur?: number;
 }
 
+/** Pin category id → marker emoji/color + bilingual label (see `PIN_CATS` in
+ *  data.ts). Kept as a small closed set so pins stay colour-coded on the map. */
+export type PinCat = 'place' | 'food' | 'play' | 'meet' | 'stay' | 'park';
+
+/**
+ * A shared map pin, synced per-item exactly like the other lists (see
+ * {@link Identified}): a concurrent add on another device is never dropped, and
+ * a deletion travels as a monotonic `del` tombstone. Coordinates are WGS84
+ * degrees. Labels/memos are free user text (machine-translated for display, like
+ * user-added activities), so there is no separate `zh` field.
+ */
+export interface Pin extends Identified {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  memo?: string;
+  cat: PinCat;
+  /** Member id who created the pin; null if unknown (e.g. seed pins). */
+  by: string | null;
+  // `ts` is inherited (optional) from Identified: seed pins ship pristine
+  // (no ts, like the other seed lists); every user edit stamps one via nextTs().
+}
+
+/**
+ * A member's live shared location. Ephemeral — carried inside their
+ * {@link PresenceEntry} (never in the room lists), so it appears and expires
+ * with the device's presence and needs no separate merge/tombstone logic.
+ */
+export interface SharedLoc {
+  lat: number;
+  lng: number;
+  /** Accuracy radius in metres from the Geolocation API, when the browser gives it. */
+  acc?: number;
+  /** Fix time (device clock, ms) — drives the "N분 전" freshness label. */
+  ts: number;
+}
+
 export interface Photo extends Identified, MediaRef {
   id: string;
   /** Uploader member id (mirrors {@link Comment.mid}); null if unknown. */
@@ -112,6 +150,7 @@ export interface TripDoc {
   foods: Food[];
   comments: Comments;
   photos: Photo[];
+  pins: Pin[];
 }
 
 export interface PresenceEntry {
@@ -120,6 +159,9 @@ export interface PresenceEntry {
   tab: string;
   ed: string | null;
   edTs: number;
+  /** Live shared location, present only while this device is sharing (and until
+   *  its presence expires). Absent/null otherwise. */
+  loc?: SharedLoc | null;
 }
 
 export type Presence = Record<string, PresenceEntry>;

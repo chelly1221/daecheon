@@ -6,12 +6,48 @@ import type {
   Identified,
   Member,
   PackItem,
+  Pin,
+  PinCat,
   TideDay,
   TripDoc,
 } from './types';
 
 export const KEY = 'paros-trip-2026-v1';
 export const ROOM_DEFAULT = 'paros-daecheon-2026-x7k3q9';
+
+/** Trip home base — 한화리조트 대천 파로스, off 대천해수욕장. Used as the map's
+ *  initial centre and the "내 위치 없음" recenter fallback (WGS84 degrees). */
+export const RESORT = { lat: 36.317, lng: 126.5109 };
+
+export interface PinCatDef {
+  id: PinCat;
+  ko: string;
+  zh: string;
+  /** Marker glyph shown on the map (no image assets needed). */
+  emoji: string;
+  /** Marker/badge accent colour. */
+  color: string;
+}
+
+/** The closed set of pin categories, colour-coded on the map. */
+export const PIN_CATS: PinCatDef[] = [
+  { id: 'place', ko: '장소', zh: '地点', emoji: '📍', color: '#0B7CD8' },
+  { id: 'food', ko: '맛집', zh: '美食', emoji: '🍽️', color: '#E8503A' },
+  { id: 'play', ko: '놀거리', zh: '玩乐', emoji: '🏖️', color: '#1FAF6B' },
+  { id: 'meet', ko: '모임', zh: '集合', emoji: '🚩', color: '#F5A800' },
+  { id: 'stay', ko: '숙소', zh: '住宿', emoji: '🏨', color: '#A24BE8' },
+  { id: 'park', ko: '주차', zh: '停车', emoji: '🅿️', color: '#5A7D96' },
+];
+
+const PIN_CAT_MAP: Record<string, PinCatDef> = Object.fromEntries(
+  PIN_CATS.map((c) => [c.id, c]),
+);
+
+/** Resolve a category id to its definition, falling back to 'place' for any
+ *  unknown/legacy value so the UI never renders a blank marker. */
+export function pinCatDef(id: string | undefined): PinCatDef {
+  return (id && PIN_CAT_MAP[id]) || PIN_CATS[0];
+}
 
 /** A message and its delete tombstone both merged in: `del` wins, text stripped. */
 function tombstone(c: Comment): Comment {
@@ -281,6 +317,32 @@ const foods: Food[] = [
   { id: 'f4', name: '해변 오션뷰 카페', zh: '海景咖啡厅', type: '카페', memo: '노을 시간에 가면 최고', likes: [] },
 ];
 
+// Seed pins that orient the map on first load. They ship without a `ts`
+// (pristine) so, like the other seed lists, they bootstrap into a brand-new
+// room and — because a pre-existing room simply has no `pins` field yet — are
+// carried in on first contact rather than dropped (see the guarded merge in
+// useSync). Positions are approximate; pins can be repositioned in-app.
+const pins: Pin[] = [
+  {
+    id: 'pin-resort',
+    lat: 36.317,
+    lng: 126.5109,
+    label: '한화리조트 대천 파로스',
+    memo: '우리 숙소 · 집합 장소',
+    cat: 'stay',
+    by: null,
+  },
+  {
+    id: 'pin-beach',
+    lat: 36.3138,
+    lng: 126.5072,
+    label: '대천해수욕장',
+    memo: '리조트에서 도보 약 5분',
+    cat: 'play',
+    by: null,
+  },
+];
+
 export function defaultDoc(): TripDoc {
   return {
     activities: activities.map((a) => ({ ...a, votes: [...a.votes] })),
@@ -288,5 +350,6 @@ export function defaultDoc(): TripDoc {
     foods: foods.map((f) => ({ ...f, likes: [...f.likes] })),
     comments: {},
     photos: [],
+    pins: pins.map((p) => ({ ...p })),
   };
 }

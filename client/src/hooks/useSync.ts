@@ -6,7 +6,9 @@ import type {
   Food,
   PackItem,
   Photo,
+  Pin,
   Presence,
+  SharedLoc,
   SyncStatus,
   Tab,
 } from '../types';
@@ -36,11 +38,13 @@ interface SyncOpts {
   packing: PackItem[];
   foods: Food[];
   photos: Photo[];
+  pins: Pin[];
   comments: Comments;
   setActivities: (v: Activity[]) => void;
   setPacking: (v: PackItem[]) => void;
   setFoods: (v: Food[]) => void;
   setPhotos: (v: Photo[]) => void;
+  setPins: (v: Pin[]) => void;
   setComments: (v: Comments) => void;
 }
 
@@ -67,6 +71,10 @@ export interface SyncApi {
    *  writes (tab change, profile switch, editing indicator) that aren't a
    *  user-visible content save. */
   pushSoon: (opts?: { silent?: boolean }) => void;
+  /** Set (or clear with null) the live location broadcast in this device's
+   *  presence entry. Only updates the ref — the caller decides when to push
+   *  (via {@link pushSoon}), throttling how often a moving fix hits the network. */
+  setMyLoc: (loc: SharedLoc | null) => void;
 }
 
 export function useSync(opts: SyncOpts): SyncApi {
@@ -86,6 +94,8 @@ export function useSync(opts: SyncOpts): SyncApi {
   const docTsRef = useRef<number>(0);
   const presenceRef = useRef<Presence>({});
   const myEdRef = useRef<{ id: string; ts: number } | null>(null);
+  // Live location broadcast in our presence entry while sharing; null otherwise.
+  const myLocRef = useRef<SharedLoc | null>(null);
   const pushingRef = useRef<boolean>(false);
   const pendingPushRef = useRef<boolean>(false);
   // adoptedRef: we've completed a first successful read of the room, so local
@@ -164,6 +174,13 @@ export function useSync(opts: SyncOpts): SyncApi {
             const mm = combine(st.photos, d.photos);
             if (mm !== st.photos) st.setPhotos(mm);
           }
+          // Guarded like the others: a pre-existing room predates the `pins`
+          // field, so `d.pins` is undefined there — skipping the merge keeps our
+          // seed pins so they bootstrap in (and get pushed) rather than dropped.
+          if (Array.isArray(d.pins)) {
+            const mpin = combine(st.pins, d.pins);
+            if (mpin !== st.pins) st.setPins(mpin);
+          }
           if ((d.updatedAt || 0) > (docTsRef.current || 0)) docTsRef.current = d.updatedAt || 0;
         }
         // Advance the hybrid logical clock past every ts we just observed so our
@@ -182,6 +199,7 @@ export function useSync(opts: SyncOpts): SyncApi {
           scan(d.packing);
           scan(d.foods);
           scan(d.photos);
+          scan(d.pins);
           const cm = (d.comments || {}) as Record<string, { ts?: number }[]>;
           for (const k in cm) {
             if (Array.isArray(cm[k])) for (const c of cm[k]) if (c && typeof c.ts === 'number' && c.ts > mx) mx = c.ts;
@@ -218,6 +236,8 @@ export function useSync(opts: SyncOpts): SyncApi {
       tab: st.tab,
       ed: myEd && now - myEd.ts < 12000 ? myEd.id : null,
       edTs: myEd ? myEd.ts : 0,
+      // Live location while sharing; null clears it for everyone on the next pull.
+      loc: myLocRef.current,
     };
     for (const k of Object.keys(pres)) {
       if (now - (pres[k].ts || 0) > 120000) delete pres[k];
@@ -229,6 +249,7 @@ export function useSync(opts: SyncOpts): SyncApi {
         packing: st.packing,
         foods: st.foods,
         photos: st.photos,
+        pins: st.pins,
         comments: st.comments,
         presence: pres,
         updatedAt: now,
@@ -294,6 +315,10 @@ export function useSync(opts: SyncOpts): SyncApi {
     },
     [pushSoon],
   );
+
+  const setMyLoc = useCallback((loc: SharedLoc | null) => {
+    myLocRef.current = loc;
+  }, []);
 
   const heartbeat = useCallback(async () => {
     if (document.hidden || !roomIdRef.current || statusRef.current === 'local') return;
@@ -380,13 +405,14 @@ export function useSync(opts: SyncOpts): SyncApi {
           packing: opts.packing,
           foods: opts.foods,
           photos: opts.photos,
+          pins: opts.pins,
           comments: opts.comments,
         }),
       );
     } catch {
       /* ignore */
     }
-  }, [opts.me, opts.activities, opts.packing, opts.foods, opts.photos, opts.comments]);
+  }, [opts.me, opts.activities, opts.packing, opts.foods, opts.photos, opts.pins, opts.comments]);
 
   return {
     status,
@@ -397,5 +423,6 @@ export function useSync(opts: SyncOpts): SyncApi {
     nextTs,
     touch,
     pushSoon,
+    setMyLoc,
   };
 }

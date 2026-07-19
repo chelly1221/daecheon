@@ -162,6 +162,26 @@ function mergeItems(a, b) {
   return out;
 }
 
+// Merge the presence map per device key rather than replacing it wholesale.
+// Each device only ever bumps ITS OWN entry's `ts` on push (peers carry other
+// entries forward verbatim), so keeping the higher-`ts` entry per key makes each
+// device authoritative over its own state: a peer's carried-forward stale copy
+// can never revert a device's fresh self-write (e.g. a just-cleared shared
+// location reappearing after "중지"). Entries past the liveness window are
+// pruned — mirroring the client — so a device that left doesn't linger.
+function mergePresence(a, b, now) {
+  const A = a && typeof a === 'object' ? a : {};
+  const B = b && typeof b === 'object' ? b : {};
+  const out = {};
+  for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) {
+    const ea = A[k];
+    const eb = B[k];
+    const pick = !eb ? ea : !ea ? eb : (eb.ts || 0) >= (ea.ts || 0) ? eb : ea;
+    if (pick && now - (pick.ts || 0) <= 120000) out[k] = pick;
+  }
+  return out;
+}
+
 // Serialize read-modify-write per room so concurrent PUTs can't interleave and
 // drop a merged comment. Each room keeps a promise chain; work runs in order.
 const roomChains = new Map();
@@ -197,15 +217,18 @@ app.put('/api/rooms/:id', async (req, res) => {
     await serialize(id, async () => {
       const existing = await readRoom(id);
       // Per-item convergent union for every list (a stale incoming array can no
-      // longer delete an item it never saw); append-only union for comments.
-      // presence + updatedAt stay last-write-wins via the `...incoming` spread.
+      // longer delete an item it never saw); append-only union for comments;
+      // per-device merge for presence. updatedAt stays last-write-wins via the
+      // `...incoming` spread.
       const doc = {
         ...incoming,
         activities: mergeItems(existing && existing.activities, incoming.activities),
         packing: mergeItems(existing && existing.packing, incoming.packing),
         foods: mergeItems(existing && existing.foods, incoming.foods),
         photos: mergeItems(existing && existing.photos, incoming.photos),
+        pins: mergeItems(existing && existing.pins, incoming.pins),
         comments: mergeComments(existing && existing.comments, incoming.comments),
+        presence: mergePresence(existing && existing.presence, incoming.presence, Date.now()),
       };
       await writeRoom(id, doc);
     });

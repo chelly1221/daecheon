@@ -87,6 +87,31 @@ export interface UIStrings {
   tideHigh: string;
   tideHint: string;
   tideSource: string;
+  map: string;
+  mapHint: string;
+  pinAdd: string;
+  pinPlaceHint: string;
+  pinMoveHint: string;
+  pinNamePh: string;
+  pinCat: string;
+  pinMove: string;
+  pinAddTitle: string;
+  pinEditTitle: string;
+  pinEmpty: string;
+  pinListTitle: string;
+  shareLoc: string;
+  shareOn: string;
+  shareStop: string;
+  sharingSuffix: string;
+  locDenied: string;
+  locUnavailable: string;
+  locMe: string;
+  locFresh: string;
+  locMinAgo: string;
+  recenter: string;
+  fitAll: string;
+  locHint: string;
+  mapSource: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -177,6 +202,31 @@ export const UI: Record<Lang, UIStrings> = {
     tideHigh: '만조',
     tideHint: '간조엔 갯벌이 넓게 드러나요 · 갯벌·머드 놀기 좋은 시간!',
     tideSource: '대천해수욕장(보령) 기준 · 국립해양조사원 조석예보',
+    map: '지도',
+    mapHint: '핀을 눌러 편집 · 아래 + 버튼으로 새 핀',
+    pinAdd: '+ 핀',
+    pinPlaceHint: '지도를 눌러 핀 위치를 정하세요',
+    pinMoveHint: '새 위치를 지도에서 눌러주세요',
+    pinNamePh: '장소 이름',
+    pinCat: '종류',
+    pinMove: '위치 옮기기',
+    pinAddTitle: '핀 추가',
+    pinEditTitle: '핀 편집',
+    pinEmpty: '아직 핀이 없어요 · 첫 장소를 찍어보세요',
+    pinListTitle: '저장한 장소',
+    shareLoc: '내 위치 공유',
+    shareOn: '위치 공유 중',
+    shareStop: '중지',
+    sharingSuffix: '명 위치 공유 중',
+    locDenied: '위치 권한이 거부됐어요 · 브라우저 설정에서 허용해 주세요',
+    locUnavailable: '현재 위치를 가져올 수 없어요',
+    locMe: '나',
+    locFresh: '방금',
+    locMinAgo: '분 전',
+    recenter: '내 위치',
+    fitAll: '전체',
+    locHint: '앱을 열어둔 동안, 함께 보는 사람에게만 위치가 보여요',
+    mapSource: '© OpenStreetMap 기여자',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -265,6 +315,31 @@ export const UI: Record<Lang, UIStrings> = {
     tideHigh: '满潮',
     tideHint: '干潮时滩涂大面积显露 · 赶海·玩泥浆正当时!',
     tideSource: '大川海水浴场(保宁) · 韩国国立海洋调查院潮汐预报',
+    map: '地图',
+    mapHint: '点标记可编辑 · 用下方 + 添加新标记',
+    pinAdd: '+ 标记',
+    pinPlaceHint: '点击地图确定标记位置',
+    pinMoveHint: '在地图上点选新位置',
+    pinNamePh: '地点名称',
+    pinCat: '类型',
+    pinMove: '移动位置',
+    pinAddTitle: '添加标记',
+    pinEditTitle: '编辑标记',
+    pinEmpty: '还没有标记 · 标出第一个地点吧',
+    pinListTitle: '已保存的地点',
+    shareLoc: '共享我的位置',
+    shareOn: '正在共享位置',
+    shareStop: '停止',
+    sharingSuffix: '人正在共享位置',
+    locDenied: '位置权限被拒绝 · 请在浏览器设置中允许',
+    locUnavailable: '无法获取当前位置',
+    locMe: '我',
+    locFresh: '刚刚',
+    locMinAgo: '分钟前',
+    recenter: '我的位置',
+    fitAll: '全部',
+    locHint: '仅在使用期间, 位置只对一起查看的人可见',
+    mapSource: '© OpenStreetMap 贡献者',
   },
 };
 
