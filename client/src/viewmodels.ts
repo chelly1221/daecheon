@@ -50,3 +50,22 @@ export interface PackView {
   onCheck: () => void;
   onTap: () => void;
 }
+
+/** One shared gallery photo/video, with URLs and uploader display already resolved. */
+export interface PhotoView {
+  id: string;
+  kind: 'image' | 'video';
+  /** Small tile source (image thumb or video poster); falls back to full. */
+  thumbUrl: string;
+  /** Full-size source shown in the viewer. */
+  fullUrl: string;
+  /** Video poster URL, used as the <video> poster and the tile. */
+  posterUrl?: string;
+  by: string;
+  color: string;
+  time: string;
+  canDelete: boolean;
+  w?: number;
+  h?: number;
+  dur?: number;
+}

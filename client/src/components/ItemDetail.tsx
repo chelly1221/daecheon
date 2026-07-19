@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import { css } from '../css';
 import type { UIStrings } from '../i18n';
-import type { Lang } from '../types';
+import type { Lang, MediaRef } from '../types';
+import { MediaError, type MediaErrorCode, isVideoFile, uploadMedia } from '../media';
 import AutoText, { useTranslated } from './AutoText';
 import LinkIcon from './LinkIcon';
+import MediaViewer from './MediaViewer';
 
 /** The quoted parent shown above a reply bubble. */
 export interface ReplyQuote {
@@ -12,6 +14,14 @@ export interface ReplyQuote {
   text: string;
   color: string;
   deleted: boolean;
+}
+
+/** A chat attachment resolved to served URLs (built in App from Comment.media). */
+export interface CommentMedia {
+  kind: 'image' | 'video';
+  fullUrl: string;
+  thumbUrl?: string;
+  posterUrl?: string;
 }
 
 export interface DetailComment {
@@ -23,18 +33,20 @@ export interface DetailComment {
   isMe: boolean;
   replyTo?: string;
   parent?: ReplyQuote | null;
+  media?: CommentMedia | null;
 }
 
 interface Props {
   L: UIStrings;
   lang: Lang;
+  roomId: string;
   title: string;
   typeLabel: string; // e.g. food category chip; '' to hide
   meta: string; // desc / memo; '' to hide
   link: string;
   linkShow: boolean;
   comments: DetailComment[];
-  onSend: (text: string, replyTo?: string) => void;
+  onSend: (text: string, replyTo?: string, media?: MediaRef) => void;
   onDelete: (id: string) => void;
   onEdit: () => void;
   onClose: () => void;
@@ -54,6 +66,7 @@ type ReplyState = { id: string; name: string; text: string } | null;
 export default function ItemDetail({
   L,
   lang,
+  roomId,
   title,
   typeLabel,
   meta,
@@ -70,12 +83,47 @@ export default function ItemDetail({
   const [reply, setReply] = useState<ReplyState>(null);
   const [toast, setToast] = useState('');
   const [flashId, setFlashId] = useState<string | null>(null);
+  const [sending, setSending] = useState<{ progress: number; isVideo: boolean } | null>(null);
+  const [mediaView, setMediaView] = useState<DetailComment | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const atBottomRef = useRef(true);
   const prevLenRef = useRef(0);
   const openedAtRef = useRef(0);
+
+  const mediaErrMsg = (code: MediaErrorCode): string =>
+    code === 'too-large'
+      ? L.videoTooLarge
+      : code === 'type'
+        ? L.unsupportedMedia
+        : code === 'decode'
+          ? L.mediaReadFail
+          : L.uploadFail;
+
+  // Attach one or more photos/videos: each uploads then posts as its own
+  // media-only message. Errors surface via the transient toast; the batch runs
+  // sequentially to keep decoding/memory sane on mobile.
+  const onPickMedia = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    if (!files.length) return;
+    void files
+      .reduce(async (prev, file) => {
+        await prev;
+        setSending({ progress: 0, isVideo: isVideoFile(file) });
+        try {
+          const ref = await uploadMedia(roomId, file, (f) =>
+            setSending((s) => (s ? { ...s, progress: f } : s)),
+          );
+          onSend('', undefined, ref);
+        } catch (err) {
+          setToast(mediaErrMsg(err instanceof MediaError ? err.code : 'upload'));
+        }
+      }, Promise.resolve())
+      .finally(() => setSending(null));
+  };
 
   const onThreadScroll = () => {
     const el = listRef.current;
@@ -185,6 +233,7 @@ export default function ItemDetail({
   };
 
   return (
+    <>
     <div
       onClick={() => {
         // A stray click from opening the long-press menu (its target can resolve
@@ -283,6 +332,7 @@ export default function ItemDetail({
                 registerRef={registerRef}
                 onQuoteTap={scrollToParent}
                 onOpenMenu={openMenu}
+                onOpenMedia={setMediaView}
               />
             ))
           )}
@@ -326,7 +376,56 @@ export default function ItemDetail({
               </button>
             </div>
           )}
+          {sending && (
+            <div
+              style={css(
+                'display:flex;align-items:center;gap:9px;background:#EEF6FC;border:1px solid #DCEAF4;border-radius:12px;padding:8px 11px',
+              )}
+            >
+              <span
+                style={css(
+                  "font-family:'Material Symbols Rounded';font-size:17px;color:#0B7CD8;line-height:1;flex:none;animation:pulse 1.2s ease-in-out infinite",
+                )}
+              >
+                {sending.isVideo ? 'movie' : 'image'}
+              </span>
+              <div style={css('flex:1;min-width:0')}>
+                <div style={css('font-size:11.5px;font-weight:700;color:#3E6A8C')}>
+                  {L.uploading} {Math.round(sending.progress * 100)}%
+                </div>
+                <div
+                  style={css('margin-top:4px;width:100%;height:3px;border-radius:999px;background:rgba(11,124,216,.15)')}
+                >
+                  <div
+                    style={css(
+                      `width:${Math.round(sending.progress * 100)}%;height:100%;border-radius:999px;background:#0B7CD8;transition:width .2s`,
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={onPickMedia}
+            style={{ display: 'none' }}
+          />
           <div style={css('display:flex;align-items:center;gap:8px')}>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={!!sending}
+              aria-label={L.photoAdd}
+              style={css(
+                `flex:none;width:46px;height:46px;border-radius:50%;border:1px solid #D5E7F3;background:#F2F9FE;color:#0B7CD8;display:flex;align-items:center;justify-content:center;padding:0;opacity:${sending ? 0.5 : 1}`,
+              )}
+            >
+              <span style={css("font-family:'Material Symbols Rounded';font-size:22px;line-height:1")}>
+                add_photo_alternate
+              </span>
+            </button>
             <input
               ref={inputRef}
               value={draft}
@@ -334,7 +433,7 @@ export default function ItemDetail({
               onKeyDown={onKey}
               placeholder={L.commentPh}
               style={css(
-                'flex:1;min-height:46px;border:1px solid #D5E7F3;border-radius:999px;padding:0 16px;font-size:14px;background:#F7FCFF;outline:none;color:#22597C',
+                'flex:1;min-width:0;min-height:46px;border:1px solid #D5E7F3;border-radius:999px;padding:0 16px;font-size:14px;background:#F7FCFF;outline:none;color:#22597C',
               )}
             />
             <button
@@ -373,6 +472,27 @@ export default function ItemDetail({
         />
       )}
     </div>
+    {mediaView?.media && (
+      <MediaViewer
+        items={[
+          {
+            id: mediaView.id,
+            kind: mediaView.media.kind,
+            fullUrl: mediaView.media.fullUrl,
+            posterUrl: mediaView.media.posterUrl,
+            by: mediaView.name,
+            color: mediaView.color,
+            time: mediaView.time,
+          },
+        ]}
+        index={0}
+        lang={lang}
+        L={L}
+        onIndex={() => undefined}
+        onClose={() => setMediaView(null)}
+      />
+    )}
+    </>
   );
 }
 
@@ -385,6 +505,7 @@ function MessageBubble({
   registerRef,
   onQuoteTap,
   onOpenMenu,
+  onOpenMedia,
 }: {
   c: DetailComment;
   lang: Lang;
@@ -393,6 +514,7 @@ function MessageBubble({
   registerRef: (id: string, el: HTMLDivElement | null) => void;
   onQuoteTap: (parentId: string) => void;
   onOpenMenu: (m: MenuState) => void;
+  onOpenMedia: (c: DetailComment) => void;
 }) {
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const startRef = useRef({ x: 0, y: 0 });
@@ -450,6 +572,11 @@ function MessageBubble({
     bubbleStyle.boxShadow = c.isMe ? '0 0 0 3px rgba(11,124,216,.35)' : '0 0 0 3px rgba(11,124,216,.28)';
     bubbleStyle.transition = 'box-shadow .2s';
   }
+  // A previewable still: an image's thumb/full, or a video's captured poster.
+  // Never the video clip itself — an <img> can't render it. Empty ⇒ placeholder.
+  const mediaPreview = c.media
+    ? c.media.thumbUrl || c.media.posterUrl || (c.media.kind === 'image' ? c.media.fullUrl : '')
+    : '';
 
   return (
     <div
@@ -480,6 +607,57 @@ function MessageBubble({
             L={L}
             onTap={() => c.replyTo && onQuoteTap(c.replyTo)}
           />
+        )}
+        {c.media && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenMedia(c);
+            }}
+            style={css(
+              `position:relative;${c.text ? 'margin-bottom:6px;' : ''}border-radius:10px;overflow:hidden;max-width:210px;cursor:pointer;background:rgba(0,0,0,.06)`,
+            )}
+          >
+            {mediaPreview ? (
+              <img
+                src={mediaPreview}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                style={css('display:block;width:100%;max-height:260px;object-fit:cover')}
+              />
+            ) : (
+              <div
+                style={css(
+                  'width:180px;height:135px;background:#0B2536;display:flex;align-items:center;justify-content:center',
+                )}
+              >
+                <span
+                  style={css(
+                    "font-family:'Material Symbols Rounded';font-size:34px;color:#7FB2DC;line-height:1",
+                  )}
+                >
+                  movie
+                </span>
+              </div>
+            )}
+            {c.media.kind === 'video' && (
+              <span
+                style={css(
+                  'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:rgba(6,20,32,.5);display:flex;align-items:center;justify-content:center',
+                )}
+              >
+                <span
+                  style={css(
+                    "font-family:'Material Symbols Rounded';font-size:24px;color:#FFFFFF;line-height:1",
+                  )}
+                >
+                  play_arrow
+                </span>
+              </span>
+            )}
+          </div>
         )}
         {c.text}
       </div>

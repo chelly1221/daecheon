@@ -8,6 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const dataDir = path.join(repoRoot, 'data');
+const mediaDir = path.join(dataDir, 'media');
 const clientDist = path.join(repoRoot, 'client', 'dist');
 
 const PORT = process.env.PORT || 3001;
@@ -15,7 +16,23 @@ const serveClient =
   process.env.NODE_ENV === 'production' || process.argv.includes('--serve-client');
 const ID_RE = /^[A-Za-z0-9-]{1,64}$/;
 
+// Shared photo/video storage. Binaries live as standalone files under
+// data/media/<roomId>/, never inline in the room JSON — the whole room doc is
+// re-PUT on every change and polled every 2s, so embedded media would wreck
+// sync. Only lightweight metadata (filenames + dimensions) rides in the doc.
+const MEDIA_MAX = 64 * 1024 * 1024; // 64MB hard cap per uploaded file
+const MIME_EXT = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/quicktime': '.mov',
+};
+
 fs.mkdirSync(dataDir, { recursive: true });
+fs.mkdirSync(mediaDir, { recursive: true });
 
 // In-memory cache to avoid re-reading room files from disk on every poll.
 const cache = new Map();
@@ -187,6 +204,7 @@ app.put('/api/rooms/:id', async (req, res) => {
         activities: mergeItems(existing && existing.activities, incoming.activities),
         packing: mergeItems(existing && existing.packing, incoming.packing),
         foods: mergeItems(existing && existing.foods, incoming.foods),
+        photos: mergeItems(existing && existing.photos, incoming.photos),
         comments: mergeComments(existing && existing.comments, incoming.comments),
       };
       await writeRoom(id, doc);
@@ -256,6 +274,81 @@ app.get('/api/translate', async (req, res) => {
     return res.json({ text: q, translated: false });
   }
 });
+
+// --- Shared media: upload (streamed to disk) + static serving. --------------
+// Uploads are streamed straight to a temp file with a hard size cap so a large
+// video never buffers in memory, then atomically renamed. The room JSON body
+// parser above ignores these requests (their content-type isn't JSON), so the
+// raw request stream is intact here.
+app.post('/api/rooms/:id/media', async (req, res) => {
+  const { id } = req.params;
+  if (!ID_RE.test(id)) return res.status(400).json({ error: 'invalid room id' });
+  const ct = String(req.headers['content-type'] || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  const ext = MIME_EXT[ct];
+  if (!ext) return res.status(415).json({ error: 'unsupported media type' });
+
+  const dir = path.join(mediaDir, id);
+  try {
+    await fsp.mkdir(dir, { recursive: true });
+  } catch {
+    return res.status(500).json({ error: 'storage error' });
+  }
+  const name = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}${ext}`;
+  const dest = path.join(dir, name);
+  const tmp = `${dest}.${process.pid}.tmp`;
+  const out = fs.createWriteStream(tmp);
+
+  let size = 0;
+  let settled = false;
+  const cleanupTmp = () => fsp.unlink(tmp).catch(() => {});
+  const fail = (code, msg) => {
+    if (settled) return;
+    settled = true;
+    req.unpipe(out);
+    out.destroy();
+    cleanupTmp();
+    if (!res.headersSent) res.status(code).json({ error: msg });
+  };
+
+  req.on('data', (chunk) => {
+    size += chunk.length;
+    if (size > MEDIA_MAX) {
+      fail(413, 'file too large');
+      req.destroy();
+    }
+  });
+  req.on('error', () => fail(400, 'upload error'));
+  out.on('error', () => fail(500, 'write failed'));
+  out.on('finish', async () => {
+    if (settled) return;
+    settled = true;
+    try {
+      await fsp.rename(tmp, dest);
+      res.json({ file: name, url: `/api/media/${id}/${name}` });
+    } catch {
+      cleanupTmp();
+      if (!res.headersSent) res.status(500).json({ error: 'write failed' });
+    }
+  });
+  req.pipe(out);
+});
+
+// Serve stored media. Filenames are unique + immutable, so cache hard. Range
+// requests (default on) let iOS scrub through videos. fallthrough:false makes a
+// missing file a real 404 instead of falling through to the SPA HTML shell.
+app.use(
+  '/api/media',
+  express.static(mediaDir, {
+    fallthrough: false,
+    immutable: true,
+    maxAge: '365d',
+    index: false,
+    dotfiles: 'ignore',
+  }),
+);
 
 if (serveClient) {
   app.use(express.static(clientDist));

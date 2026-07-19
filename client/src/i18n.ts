@@ -60,6 +60,21 @@ export interface UIStrings {
   filterAll: string;
   searchPh: string;
   noResult: string;
+  photo: string;
+  photoHint: string;
+  photoEmpty: string;
+  photoAdd: string;
+  uploading: string;
+  uploadFail: string;
+  retry: string;
+  videoTooLarge: string;
+  unsupportedMedia: string;
+  mediaReadFail: string;
+  photoDeleteAsk: string;
+  cancel: string;
+  wHourly: string;
+  wFeels: string;
+  wSource: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -123,6 +138,21 @@ export const UI: Record<Lang, UIStrings> = {
     filterAll: '전체보기',
     searchPh: '준비물 검색',
     noResult: '검색 결과가 없어요',
+    photo: '사진',
+    photoHint: '함께 찍은 사진·영상을 모아요',
+    photoEmpty: '아직 사진이 없어요 · 첫 사진을 올려보세요',
+    photoAdd: '+ 올리기',
+    uploading: '올리는 중',
+    uploadFail: '업로드 실패',
+    retry: '다시',
+    videoTooLarge: '동영상이 너무 커요 · 최대 60MB',
+    unsupportedMedia: '지원하지 않는 형식이에요',
+    mediaReadFail: '파일을 읽을 수 없어요',
+    photoDeleteAsk: '이 사진을 삭제할까요?',
+    cancel: '취소',
+    wHourly: '시간별 예보',
+    wFeels: '체감',
+    wSource: '대천해수욕장 · Open-Meteo',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -184,6 +214,21 @@ export const UI: Record<Lang, UIStrings> = {
     filterAll: '全部',
     searchPh: '搜索行李',
     noResult: '没有搜索结果',
+    photo: '照片',
+    photoHint: '一起收藏拍下的照片·视频',
+    photoEmpty: '还没有照片 · 上传第一张吧',
+    photoAdd: '+ 上传',
+    uploading: '上传中',
+    uploadFail: '上传失败',
+    retry: '重试',
+    videoTooLarge: '视频太大 · 最多60MB',
+    unsupportedMedia: '不支持的格式',
+    mediaReadFail: '无法读取文件',
+    photoDeleteAsk: '删除这张照片吗?',
+    cancel: '取消',
+    wHourly: '每小时预报',
+    wFeels: '体感',
+    wSource: '大川海水浴场 · Open-Meteo',
   },
 };
 

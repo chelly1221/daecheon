@@ -1,5 +1,5 @@
 export type Lang = 'ko' | 'zh';
-export type Tab = 'home' | 'act' | 'pack' | 'food';
+export type Tab = 'home' | 'act' | 'pack' | 'food' | 'photo';
 export type ListKey = 'activities' | 'packing' | 'foods';
 export type SyncStatus = 'connecting' | 'live' | 'error' | 'local';
 
@@ -55,11 +55,44 @@ export interface Food extends Identified {
   likes: string[];
 }
 
+/**
+ * A shared photo/video stored as a separate file in the room's media volume
+ * (never inline in the room JSON — the whole doc is re-PUT on every change).
+ * `file`/`thumb`/`poster` are opaque filenames under `data/media/<room>/`,
+ * resolved to URLs via {@link mediaUrl}. Carried both by {@link Photo} (the
+ * gallery) and by {@link Comment.media} (a chat attachment).
+ */
+export interface MediaRef {
+  /** Full-size display file (images: ~1920px JPEG; videos: the original clip). */
+  file: string;
+  mime: string;
+  kind: 'image' | 'video';
+  /** Small grid/preview thumbnail (images only). */
+  thumb?: string;
+  /** First-frame poster (videos only), doubles as the grid thumbnail. */
+  poster?: string;
+  /** Intrinsic pixel size, for aspect-ratio-correct layout without a reflow. */
+  w?: number;
+  h?: number;
+  /** Video duration in seconds, for the play badge. */
+  dur?: number;
+}
+
+export interface Photo extends Identified, MediaRef {
+  id: string;
+  /** Uploader member id (mirrors {@link Comment.mid}); null if unknown. */
+  by: string | null;
+  caption?: string;
+  ts: number;
+}
+
 export interface Comment {
   id: string;
   mid: string | null;
   text: string;
   ts: number;
+  /** An attached photo/video, when this message carries media. */
+  media?: MediaRef;
   /** Parent comment id when this message is a reply. */
   replyTo?: string;
   /**
@@ -78,6 +111,7 @@ export interface TripDoc {
   packing: PackItem[];
   foods: Food[];
   comments: Comments;
+  photos: Photo[];
 }
 
 export interface PresenceEntry {
@@ -107,9 +141,35 @@ export interface Weather {
   lo: number;
   pp: string;
   desc: string;
+  /** ISO `YYYY-MM-DD` key joining a daily card to its hourly breakdown
+   *  ({@link WeatherHour}). Present only on live forecast data — absent on the
+   *  average/fallback days, which therefore aren't tap-through. */
+  key?: string;
+  /** Daily WMO weather_code — the day's most-significant condition, the same
+   *  source as {@link desc}. Live data only; drives the detail-sheet header
+   *  emoji so it agrees with the desc text. */
+  code?: number;
 }
 
 export type WeatherStatus = 'loading' | 'live' | 'avg';
+
+/** One hour of the live forecast, shown in the tap-through detail sheet. */
+export interface WeatherHour {
+  /** Hour of day 0–23 in Asia/Seoul. */
+  h: number;
+  temp: number;
+  /** Apparent ("feels-like") temperature. */
+  feels: number;
+  /** WMO weather code → description/emoji via the helpers in useWeather. */
+  code: number;
+  /** Precipitation probability %, or null when the API omits it. */
+  pp: number | null;
+  /** Wind speed, km/h. */
+  wind: number;
+}
+
+/** Live forecast hours grouped by their {@link Weather.key} date. */
+export type WeatherHours = Record<string, WeatherHour[]>;
 
 export interface EditChip {
   label: string;

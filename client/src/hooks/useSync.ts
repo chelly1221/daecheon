@@ -5,6 +5,7 @@ import type {
   Comments,
   Food,
   PackItem,
+  Photo,
   Presence,
   SyncStatus,
   Tab,
@@ -34,10 +35,12 @@ interface SyncOpts {
   activities: Activity[];
   packing: PackItem[];
   foods: Food[];
+  photos: Photo[];
   comments: Comments;
   setActivities: (v: Activity[]) => void;
   setPacking: (v: PackItem[]) => void;
   setFoods: (v: Food[]) => void;
+  setPhotos: (v: Photo[]) => void;
   setComments: (v: Comments) => void;
 }
 
@@ -157,6 +160,10 @@ export function useSync(opts: SyncOpts): SyncApi {
             const mf = combine(st.foods, d.foods);
             if (mf !== st.foods) st.setFoods(mf);
           }
+          if (Array.isArray(d.photos)) {
+            const mm = combine(st.photos, d.photos);
+            if (mm !== st.photos) st.setPhotos(mm);
+          }
           if ((d.updatedAt || 0) > (docTsRef.current || 0)) docTsRef.current = d.updatedAt || 0;
         }
         // Advance the hybrid logical clock past every ts we just observed so our
@@ -174,6 +181,7 @@ export function useSync(opts: SyncOpts): SyncApi {
           scan(d.activities);
           scan(d.packing);
           scan(d.foods);
+          scan(d.photos);
           const cm = (d.comments || {}) as Record<string, { ts?: number }[]>;
           for (const k in cm) {
             if (Array.isArray(cm[k])) for (const c of cm[k]) if (c && typeof c.ts === 'number' && c.ts > mx) mx = c.ts;
@@ -220,6 +228,7 @@ export function useSync(opts: SyncOpts): SyncApi {
         activities: st.activities,
         packing: st.packing,
         foods: st.foods,
+        photos: st.photos,
         comments: st.comments,
         presence: pres,
         updatedAt: now,
@@ -370,13 +379,14 @@ export function useSync(opts: SyncOpts): SyncApi {
           activities: opts.activities,
           packing: opts.packing,
           foods: opts.foods,
+          photos: opts.photos,
           comments: opts.comments,
         }),
       );
     } catch {
       /* ignore */
     }
-  }, [opts.me, opts.activities, opts.packing, opts.foods, opts.comments]);
+  }, [opts.me, opts.activities, opts.packing, opts.foods, opts.photos, opts.comments]);
 
   return {
     status,

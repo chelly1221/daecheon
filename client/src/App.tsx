@@ -12,6 +12,8 @@ import {
 } from './i18n';
 import { devId, useSync } from './hooks/useSync';
 import { useWeather } from './hooks/useWeather';
+import { MediaError, isVideoFile, mediaUrl, uploadMedia } from './media';
+import type { PhotoUpload } from './media';
 import type {
   Activity,
   Comment,
@@ -20,12 +22,14 @@ import type {
   Food,
   Lang,
   ListKey,
+  MediaRef,
   PackItem,
+  Photo,
   SheetState,
   Tab,
   Weather,
 } from './types';
-import type { ActView, AsgChip, AsgTab, FoodView, PackView } from './viewmodels';
+import type { ActView, AsgChip, AsgTab, FoodView, PackView, PhotoView } from './viewmodels';
 import Header from './components/Header';
 import StartScreen from './components/StartScreen';
 import type { MeChip } from './components/StartScreen';
@@ -33,6 +37,7 @@ import HomeTab from './components/HomeTab';
 import ActivitiesTab from './components/ActivitiesTab';
 import PackingTab from './components/PackingTab';
 import FoodTab from './components/FoodTab';
+import PhotoTab from './components/PhotoTab';
 import BottomNav from './components/BottomNav';
 import type { NavItem } from './components/BottomNav';
 import ProfileModal from './components/ProfileModal';
@@ -49,6 +54,7 @@ interface Initial {
   activities: Activity[];
   packing: PackItem[];
   foods: Food[];
+  photos: Photo[];
   comments: Comments;
 }
 
@@ -70,6 +76,7 @@ function loadInitial(): Initial {
         activities: j.activities || d.activities,
         packing: j.packing || d.packing,
         foods: j.foods || d.foods,
+        photos: Array.isArray(j.photos) ? j.photos : d.photos,
         comments: j.comments && typeof j.comments === 'object' ? j.comments : {},
       };
     }
@@ -91,9 +98,14 @@ const NAV_DEFS: [Tab, string][] = [
   ['act', 'surfing'],
   ['pack', 'checklist'],
   ['food', 'restaurant'],
+  ['photo', 'photo_library'],
 ];
 // Left→right tab order for swipe navigation (single source of truth = the nav).
 const TAB_ORDER: Tab[] = NAV_DEFS.map(([t]) => t);
+
+// Monotonic key source for in-flight gallery uploads (module scope so it never
+// resets on re-render).
+let uploadSeq = 0;
 
 export default function App() {
   const initial = useMemo(loadInitial, []);
@@ -103,7 +115,11 @@ export default function App() {
   const [activities, setActivities] = useState<Activity[]>(initial.activities);
   const [packing, setPacking] = useState<PackItem[]>(initial.packing);
   const [foods, setFoods] = useState<Food[]>(initial.foods);
+  const [photos, setPhotos] = useState<Photo[]>(initial.photos);
   const [comments, setComments] = useState<Comments>(initial.comments);
+  // In-flight/failed gallery uploads live here (not in PhotoTab) so switching
+  // tabs mid-upload can't discard a failure's error/retry affordance.
+  const [uploads, setUploads] = useState<PhotoUpload[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [detail, setDetail] = useState<{ list: ListKey; id: string } | null>(null);
@@ -114,17 +130,19 @@ export default function App() {
   const [fAsg, setFAsg] = useState<string[]>([]);
   const [slideDir, setSlideDir] = useState(0); // tab-change direction for the slide anim
 
-  const { days, status: weatherStatus } = useWeather();
+  const { days, hours: weatherHours, status: weatherStatus } = useWeather();
   const sync = useSync({
     me,
     tab,
     activities,
     packing,
     foods,
+    photos,
     comments,
     setActivities,
     setPacking,
     setFoods,
+    setPhotos,
     setComments,
   });
 
@@ -244,18 +262,76 @@ export default function App() {
       if (p) openEditPack(p);
     }
   };
-  const addComment = (itemId: string, text: string, replyTo?: string) => {
+  const addComment = (itemId: string, text: string, replyTo?: string, media?: MediaRef) => {
     const t = text.trim();
-    if (!t) return;
+    if (!t && !media) return;
     const c: Comment = {
       id: myDev + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
       mid: me,
       text: t,
       ts: sync.nextTs(),
       ...(replyTo ? { replyTo } : {}),
+      ...(media ? { media } : {}),
     };
     setComments((prev) => ({ ...prev, [itemId]: [...(prev[itemId] || []), c] }));
     sync.pushSoon();
+  };
+  // A successfully-uploaded photo/video → a synced gallery entry. The binary
+  // already lives in the room's media volume; only this metadata travels.
+  const addPhoto = (ref: MediaRef) => {
+    const now = sync.nextTs();
+    const p: Photo = {
+      id: myDev + '-' + now.toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+      ...ref,
+      by: me,
+      ts: now,
+    };
+    setPhotos((prev) => [...prev, p]);
+    sync.pushSoon();
+  };
+  // Soft-delete a gallery photo (monotonic tombstone, like list items). The
+  // underlying file is left in the volume — harmless, and keeps the merge simple.
+  const deletePhoto = (id: string) => {
+    const now = sync.nextTs();
+    setPhotos((prev) => prev.map((p) => (p.id !== id ? p : { ...p, del: true, ts: now })));
+    sync.pushSoon();
+  };
+  const patchUpload = (key: string, p: Partial<PhotoUpload>) =>
+    setUploads((u) => u.map((x) => (x.key === key ? { ...x, ...p } : x)));
+  const runUpload = async (up: PhotoUpload) => {
+    patchUpload(up.key, { progress: 0, error: null });
+    // Progress lifts to App state, so gate on whole-percent changes to avoid
+    // re-rendering the whole tree on every sub-percent XHR progress tick.
+    let lastPct = 0;
+    try {
+      const ref = await uploadMedia(sync.roomId, up.file, (f) => {
+        const pct = Math.round(f * 100);
+        if (pct !== lastPct) {
+          lastPct = pct;
+          patchUpload(up.key, { progress: f });
+        }
+      });
+      addPhoto(ref);
+      setUploads((u) => u.filter((x) => x.key !== up.key));
+    } catch (err) {
+      patchUpload(up.key, { error: err instanceof MediaError ? err.code : 'upload' });
+    }
+  };
+  const pickPhotoFiles = (files: File[]) => {
+    // Show every picked file as a queued tile immediately, then upload them one
+    // at a time (decoding several large photos at once spikes mobile memory).
+    const ups: PhotoUpload[] = files.map((file) => ({
+      key: 'u' + ++uploadSeq,
+      file,
+      isVideo: isVideoFile(file),
+      progress: 0,
+      error: null,
+    }));
+    setUploads((u) => [...u, ...ups]);
+    void ups.reduce(async (prev, up) => {
+      await prev;
+      await runUpload(up);
+    }, Promise.resolve());
   };
   // Soft-delete: replace the message with a monotonic tombstone (text stripped)
   // rather than removing it, so the append-only sync merge can't resurrect it.
@@ -555,6 +631,12 @@ export default function App() {
     const p2 = (n: number) => String(n).padStart(2, '0');
     return p2(dt.getHours()) + ':' + p2(dt.getMinutes());
   };
+  // Gallery spans several days, so photos show month/day alongside the time.
+  const fmtDateTime = (ts: number) => {
+    const dt = new Date(ts);
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    return dt.getMonth() + 1 + '/' + dt.getDate() + ' ' + p2(dt.getHours()) + ':' + p2(dt.getMinutes());
+  };
   const whoOf = (mid: string | null) => {
     const m = MEMBERS.find((x) => x.id === mid);
     return { name: m ? m.name : zh ? '有人' : '누군가', color: m ? m.color : '#8AA5B8' };
@@ -587,6 +669,14 @@ export default function App() {
           isMe: !!me && c.mid === me,
           replyTo: c.replyTo,
           parent,
+          media: c.media
+            ? {
+                kind: c.media.kind,
+                fullUrl: mediaUrl(sync.roomId, c.media.file),
+                thumbUrl: c.media.thumb ? mediaUrl(sync.roomId, c.media.thumb) : undefined,
+                posterUrl: c.media.poster ? mediaUrl(sync.roomId, c.media.poster) : undefined,
+              }
+            : null,
         };
       });
   })();
@@ -631,10 +721,37 @@ export default function App() {
     }
   }
 
+  // Shared gallery: newest first, uploader + URLs resolved for the tab/viewer.
+  const photoViews: PhotoView[] = photos
+    .filter((p) => !p.del)
+    .slice()
+    .sort((a, b) => b.ts - a.ts)
+    .map((p) => {
+      const who = whoOf(p.by);
+      // Grid thumbnail = a real image (image thumb, or a video's captured
+      // poster) only — never the video clip itself, which an <img> can't render.
+      const thumbFile = p.thumb || p.poster;
+      return {
+        id: p.id,
+        kind: p.kind,
+        thumbUrl: thumbFile ? mediaUrl(sync.roomId, thumbFile) : '',
+        fullUrl: mediaUrl(sync.roomId, p.file),
+        posterUrl: p.poster ? mediaUrl(sync.roomId, p.poster) : undefined,
+        by: who.name,
+        color: who.color,
+        time: fmtDateTime(p.ts),
+        canDelete: !!me && p.by === me,
+        w: p.w,
+        h: p.h,
+        dur: p.dur,
+      };
+    });
+
   const isHome = !!me && tab === 'home';
   const isAct = !!me && tab === 'act';
   const isPack = !!me && tab === 'pack';
   const isFood = !!me && tab === 'food';
+  const isPhoto = !!me && tab === 'photo';
 
   return (
     <div
@@ -676,7 +793,16 @@ export default function App() {
                 animation: `${slideDir < 0 ? 'slideFromLeft' : 'slideFromRight'} .24s ease-out`,
               }}
             >
-              {isHome && <HomeTab L={L} weatherDays={weatherDays} weatherNote={weatherNote} />}
+              {isHome && (
+                <HomeTab
+                  L={L}
+                  lang={lang}
+                  weatherDays={weatherDays}
+                  weatherNote={weatherNote}
+                  hours={weatherHours}
+                  live={weatherStatus === 'live'}
+                />
+              )}
               {isAct && (
                 <ActivitiesTab L={L} lang={lang} acts={acts} onAdd={() => openAdd('activities')} />
               )}
@@ -694,6 +820,17 @@ export default function App() {
                 />
               )}
               {isFood && <FoodTab L={L} lang={lang} foods={foodList} onAdd={() => openAdd('foods')} />}
+              {isPhoto && (
+                <PhotoTab
+                  L={L}
+                  lang={lang}
+                  photos={photoViews}
+                  uploads={uploads}
+                  onPickFiles={pickPhotoFiles}
+                  onRetry={runUpload}
+                  onDelete={deletePhoto}
+                />
+              )}
             </div>
           )}
         </div>
@@ -705,13 +842,14 @@ export default function App() {
           <ItemDetail
             L={L}
             lang={lang}
+            roomId={sync.roomId}
             title={detailVM.title}
             typeLabel={detailVM.typeLabel}
             meta={detailVM.meta}
             link={detailVM.link}
             linkShow={detailVM.linkShow}
             comments={detailComments}
-            onSend={(text, replyTo) => addComment(detail.id, text, replyTo)}
+            onSend={(text, replyTo, media) => addComment(detail.id, text, replyTo, media)}
             onDelete={(id) => deleteComment(detail.id, id)}
             onEdit={editFromDetail}
             onClose={() => setDetail(null)}

@@ -261,5 +261,6 @@ export function defaultDoc(): TripDoc {
     packing: packing.map((p) => ({ ...p, assignees: [...p.assignees] })),
     foods: foods.map((f) => ({ ...f, likes: [...f.likes] })),
     comments: {},
+    photos: [],
   };
 }
