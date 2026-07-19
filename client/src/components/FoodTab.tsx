@@ -48,13 +48,6 @@ export default function FoodTab({ L, lang, foods, onAdd }: Props) {
                 >
                   <AutoText text={f.name} to={lang} />
                 </span>
-                <span
-                  style={css(
-                    'background:#E7F7F1;color:#1D9E7A;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px',
-                  )}
-                >
-                  {f.type}
-                </span>
                 {f.linkShow && <LinkIcon href={f.link} />}
               </div>
               {f.memoShow && (
