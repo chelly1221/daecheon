@@ -1,9 +1,11 @@
 import { css } from '../css';
 import type { Tab } from '../types';
+import { Icon } from '../icons';
+import type { IconName } from '../icons';
 
 export interface NavItem {
   key: Tab;
-  icon: string;
+  icon: IconName;
   fg: string;
   dotOp: number;
   onTap: () => void;
@@ -28,13 +30,7 @@ export default function BottomNav({ navs }: Props) {
             'flex:1;min-height:60px;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 0 8px',
           )}
         >
-          <span
-            style={css(
-              `font-family:'Material Symbols Rounded';font-size:26px;line-height:1;color:${n.fg}`,
-            )}
-          >
-            {n.icon}
-          </span>
+          <Icon name={n.icon} size={26} color={n.fg} />
           <span
             style={css(
               `width:5px;height:5px;border-radius:50%;background:#0B7CD8;opacity:${n.dotOp}`,

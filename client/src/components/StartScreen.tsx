@@ -1,4 +1,5 @@
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 
 export interface MeChip {
@@ -49,7 +50,7 @@ export default function StartScreen({ L, meChips }: Props) {
                 )}
               />
               <span style={css('flex:1')}>{c.label}</span>
-              <span style={css('color:#9DBDD2;font-size:14px')}>→</span>
+              <Icon name="arrow_forward" size={16} color="#9DBDD2" />
             </button>
           ))}
         </div>

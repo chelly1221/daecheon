@@ -114,6 +114,13 @@ export interface UIStrings {
   exitFull: string;
   locHint: string;
   mapSource: string;
+  /** Item (맛집/액티비티) → map location controls, shown in the edit sheet. */
+  locPick: string;
+  locSet: string;
+  locChange: string;
+  locRemove: string;
+  itemPlaceHint: string;
+  viewOnMap: string;
 }
 
 export const UI: Record<Lang, UIStrings> = {
@@ -231,6 +238,12 @@ export const UI: Record<Lang, UIStrings> = {
     exitFull: '전체화면 종료',
     locHint: '앱을 열어둔 동안, 함께 보는 사람에게만 위치가 보여요',
     mapSource: '© OpenStreetMap 기여자',
+    locPick: '지도에서 위치 지정',
+    locSet: '지도에 위치 지정됨',
+    locChange: '변경',
+    locRemove: '위치 삭제',
+    itemPlaceHint: '지도를 눌러 위치를 정하세요',
+    viewOnMap: '지도에서 보기',
   },
   zh: {
     resort: '韩华度假村 大川帕罗斯',
@@ -346,6 +359,12 @@ export const UI: Record<Lang, UIStrings> = {
     exitFull: '退出全屏',
     locHint: '仅在使用期间, 位置只对一起查看的人可见',
     mapSource: '© OpenStreetMap 贡献者',
+    locPick: '在地图上选择位置',
+    locSet: '已在地图上标记位置',
+    locChange: '更改',
+    locRemove: '移除位置',
+    itemPlaceHint: '点击地图确定位置',
+    viewOnMap: '在地图上查看',
   },
 };
 
@@ -367,15 +386,6 @@ export const FOOD_MEMO_ZH: Record<string, string> = {
   f2: '保宁名物牛角蛤+五花肉+蘑菇',
   f3: '看着大海吃晚餐',
   f4: '日落时分去最棒',
-};
-
-export const FOOD_TYPE_ZH: Record<string, string> = {
-  '회 · 조개구이': '生鱼片·烤贝',
-  구이: '烤肉',
-  '회 · 오션뷰': '生鱼片·海景',
-  카페: '咖啡厅',
-  추가: '添加',
-  기타: '其他',
 };
 
 export const WDESC_ZH: Record<string, string> = {

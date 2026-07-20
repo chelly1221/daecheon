@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang } from '../types';
 import type { AsgTab, PackView } from '../viewmodels';
@@ -81,10 +82,10 @@ export default function PackingTab({
             }}
             aria-label={L.searchPh}
             style={css(
-              `width:36px;height:36px;border-radius:11px;border:1px solid ${searchOpen ? '#0B7CD8' : '#DCEAF4'};background:${searchOpen ? '#0B7CD8' : '#FFFFFF'};color:${searchOpen ? '#FFFFFF' : '#0B7CD8'};font-family:'Material Symbols Rounded';font-size:20px;display:flex;align-items:center;justify-content:center;padding:0`,
+              `width:36px;height:36px;border-radius:11px;border:1px solid ${searchOpen ? '#0B7CD8' : '#DCEAF4'};background:${searchOpen ? '#0B7CD8' : '#FFFFFF'};color:${searchOpen ? '#FFFFFF' : '#0B7CD8'};display:flex;align-items:center;justify-content:center;padding:0`,
             )}
           >
-            {searchOpen ? 'close' : 'search'}
+            <Icon name={searchOpen ? 'close' : 'search'} size={20} />
           </button>
           <button
             onClick={onAdd}
@@ -219,10 +220,10 @@ function PackRow({ p, lang }: { p: PackView; lang: Lang }) {
       <button
         onClick={p.onCheck}
         style={css(
-          `width:28px;height:28px;flex:none;border-radius:50%;border:2px solid ${ckBd};background:${ckBg};color:#FFFFFF;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0`,
+          `width:28px;height:28px;flex:none;border-radius:50%;border:2px solid ${ckBd};background:${ckBg};color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0`,
         )}
       >
-        {p.checked ? '✓' : ''}
+        {p.checked ? <Icon name="check" size={18} /> : null}
       </button>
       <div
         onClick={p.onTap}
@@ -266,7 +267,7 @@ function PackRow({ p, lang }: { p: PackView; lang: Lang }) {
         </div>
       )}
       {p.commentCount > 0 && <CommentBadge n={p.commentCount} />}
-      <span style={css('flex:none;color:#C6DCEC;font-size:17px;line-height:1;font-weight:600')}>›</span>
+      <Icon name="chevron_right" size={19} color="#C6DCEC" />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
 import {
   androidInAppBrowser,
   canPromptInstall,
@@ -145,12 +146,7 @@ export default function InstallPrompt({ zh, navOffset }: Props) {
           </div>
         </div>
         {mode === 'ios' ? (
-          <span
-            aria-hidden="true"
-            style={css("font-family:'Material Symbols Rounded';font-size:24px;color:#0B7CD8;flex:none")}
-          >
-            ios_share
-          </span>
+          <Icon name="ios_share" size={24} color="#0B7CD8" />
         ) : (
           <button
             onClick={mode === 'chrome' ? () => openInChrome() : install}
@@ -165,10 +161,10 @@ export default function InstallPrompt({ zh, navOffset }: Props) {
           onClick={dismiss}
           aria-label={t.later}
           style={css(
-            "border:none;background:none;color:#8AA5B8;font-family:'Material Symbols Rounded';font-size:22px;line-height:1;flex:none;padding:4px;cursor:pointer",
+            'border:none;background:none;color:#8AA5B8;display:flex;align-items:center;justify-content:center;flex:none;padding:4px;cursor:pointer',
           )}
         >
-          close
+          <Icon name="close" size={22} />
         </button>
       </div>
     </div>

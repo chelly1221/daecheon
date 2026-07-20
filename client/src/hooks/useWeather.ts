@@ -15,19 +15,8 @@ export function codeDesc(c: number | null | undefined): string {
   return '뇌우';
 }
 
-// weather_code -> emoji, using the same thresholds as codeDesc.
-export function weatherEmoji(c: number | null | undefined): string {
-  if (c == null) return '⛅';
-  if (c === 0) return '☀️';
-  if (c <= 2) return '🌤️';
-  if (c === 3) return '☁️';
-  if (c <= 48) return '🌫️';
-  if (c <= 57) return '🌦️';
-  if (c <= 67) return '🌧️';
-  if (c <= 77) return '❄️';
-  if (c <= 82) return '🌦️';
-  return '⛈️';
-}
+// weather_code -> look bucket now lives in icons.tsx as `weatherKind`, rendered
+// by the colourful `WeatherIcon` SVG (retired the per-platform emoji).
 
 // Daily cards + hourly breakdown in one request. Hourly only materialises once
 // the trip falls inside Open-Meteo's ~16-day forecast horizon (before that the

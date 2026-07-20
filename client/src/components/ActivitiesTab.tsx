@@ -1,4 +1,5 @@
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang } from '../types';
 import type { ActView } from '../viewmodels';
@@ -49,6 +50,20 @@ export default function ActivitiesTab({ L, lang, acts, onAdd }: Props) {
                   <AutoText text={a.name} to={lang} />
                 </span>
                 {a.linkShow && <LinkIcon href={a.link} />}
+                {a.locShow && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      a.onMap();
+                    }}
+                    aria-label={L.viewOnMap}
+                    style={css(
+                      'display:inline-flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;border:none;background:transparent;color:#0B7CD8;padding:0',
+                    )}
+                  >
+                    <Icon name="place" size={18} />
+                  </button>
+                )}
               </div>
               {a.descShow && (
                 <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>
@@ -58,7 +73,7 @@ export default function ActivitiesTab({ L, lang, acts, onAdd }: Props) {
             </div>
             <div style={css('flex:none;display:flex;align-items:center;gap:7px')}>
               {a.commentCount > 0 && <CommentBadge n={a.commentCount} />}
-              <span style={css('color:#B8D3E6;font-size:20px;line-height:1.2;font-weight:600')}>›</span>
+              <Icon name="chevron_right" size={22} color="#B8D3E6" />
             </div>
           </div>
           {a.edChips.length > 0 && (

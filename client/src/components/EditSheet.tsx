@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 
 export interface SheetChip {
@@ -18,16 +19,24 @@ interface Props {
   showMemo: boolean;
   showCat: boolean;
   showAsg: boolean;
+  /** Show the "지도에서 위치 지정" control (맛집/액티비티 only). */
+  showLoc: boolean;
   showDelete: boolean;
   fName: string;
   fMemo: string;
   fLink: string;
   fCat: 'shared' | 'personal';
+  /** True when the item already has a map location set. */
+  hasLoc: boolean;
   asgChips: SheetChip[];
   onName: (v: string) => void;
   onMemo: (v: string) => void;
   onLink: (v: string) => void;
   onCat: (c: 'shared' | 'personal') => void;
+  /** Arm the map to pick/replace this item's location. */
+  onPickLoc: () => void;
+  /** Clear this item's location. */
+  onRemoveLoc: () => void;
   onSave: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -40,16 +49,20 @@ export default function EditSheet({
   showMemo,
   showCat,
   showAsg,
+  showLoc,
   showDelete,
   fName,
   fMemo,
   fLink,
   fCat,
+  hasLoc,
   asgChips,
   onName,
   onMemo,
   onLink,
   onCat,
+  onPickLoc,
+  onRemoveLoc,
   onSave,
   onDelete,
   onClose,
@@ -80,11 +93,12 @@ export default function EditSheet({
           <div style={css("font-family:'Jua',sans-serif;font-size:18px;color:#164A6B")}>{title}</div>
           <button
             onClick={onClose}
+            aria-label={L.close}
             style={css(
-              'width:32px;height:32px;border-radius:50%;border:none;background:#EFF6FB;color:#6B8BA3;font-size:14px;font-weight:700;padding:0',
+              'width:32px;height:32px;border-radius:50%;border:none;background:#EFF6FB;color:#6B8BA3;display:flex;align-items:center;justify-content:center;padding:0',
             )}
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
 
@@ -114,6 +128,47 @@ export default function EditSheet({
             />
           </>
         )}
+
+        {showLoc &&
+          (hasLoc ? (
+            <div
+              style={css(
+                'display:flex;align-items:center;gap:8px;min-height:46px;border:1.5px solid #BBDCF2;border-radius:12px;background:#F2F9FE;padding:6px 8px 6px 12px',
+              )}
+            >
+              <Icon name="place" size={18} color="#0B7CD8" />
+              <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:#22597C')}>
+                {L.locSet}
+              </span>
+              <button
+                onClick={onPickLoc}
+                style={css(
+                  'flex:none;min-height:34px;padding:0 13px;border-radius:999px;border:1.5px solid #BBDCF2;background:#FFFFFF;color:#0B7CD8;font-size:12.5px;font-weight:700',
+                )}
+              >
+                {L.locChange}
+              </button>
+              <button
+                onClick={onRemoveLoc}
+                aria-label={L.locRemove}
+                style={css(
+                  'flex:none;width:32px;height:32px;border-radius:50%;border:none;background:#E6F0F8;color:#6B8BA3;display:flex;align-items:center;justify-content:center;padding:0',
+                )}
+              >
+                <Icon name="close" size={15} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onPickLoc}
+              style={css(
+                'min-height:46px;border:1.5px dashed #BBDCF2;border-radius:12px;background:#F7FCFF;color:#0B7CD8;font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px',
+              )}
+            >
+              <Icon name="add_location_alt" size={18} />
+              {L.locPick}
+            </button>
+          ))}
 
         {showCat && (
           <div style={css('display:flex;gap:8px')}>

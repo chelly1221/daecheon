@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as L from 'leaflet';
 import { css } from '../css';
+import { Icon, iconSvg } from '../icons';
+import type { IconName } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang } from '../types';
 import type { LiveLocView, PinView, PlaceMode } from '../viewmodels';
@@ -13,6 +15,9 @@ interface Props {
   liveLocs: LiveLocView[];
   /** Initial map centre / recenter fallback (the resort). */
   center: { lat: number; lng: number };
+  /** One-shot centre used when arriving via a list/detail "지도에서 보기" jump; it
+   *  overrides the fit-all default on mount. Null in normal navigation. */
+  focus: { lat: number; lng: number } | null;
   sharing: boolean;
   shareError: 'denied' | 'unavailable' | null;
   /** Non-null while the map is armed to place/move a pin on the next tap. */
@@ -25,16 +30,24 @@ interface Props {
 }
 
 // DivIcon markers only (no default Leaflet image assets, which break under
-// bundlers). Content is a fixed emoji + a category/member colour — never user
-// text — so the inlined HTML can't carry an injection.
-function pinIcon(emoji: string, color: string): L.DivIcon {
+// bundlers). Content is a fixed inline-SVG icon + a category/member colour —
+// never user text — so the inlined HTML can't carry an injection.
+// `filled` markers (colour-filled, white glyph) mark 맛집/액티비티 locations so
+// they read differently from manual pins (white, colour glyph).
+function pinIcon(icon: IconName, color: string, filled: boolean): L.DivIcon {
+  const bg = filled ? color : '#fff';
+  const border = filled ? '#fff' : color;
+  const glyph = filled ? '#fff' : color;
+  const ring = filled
+    ? `0 0 0 2px ${color}66,0 2px 6px rgba(20,60,90,.35)`
+    : '0 2px 6px rgba(20,60,90,.35)';
   return L.divIcon({
     className: 'paros-pin',
     html:
-      `<div style="width:34px;height:34px;border-radius:50%;background:#fff;` +
-      `border:3px solid ${color};box-shadow:0 2px 6px rgba(20,60,90,.35);` +
+      `<div style="width:34px;height:34px;border-radius:50%;background:${bg};` +
+      `border:3px solid ${border};box-shadow:${ring};` +
       `display:flex;align-items:center;justify-content:center">` +
-      `<span style="font-size:17px;line-height:1">${emoji}</span></div>`,
+      `${iconSvg(icon, 19, glyph)}</div>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
   });
@@ -61,6 +74,7 @@ export default function MapTab({
   pins,
   liveLocs,
   center,
+  focus,
   sharing,
   shareError,
   placing,
@@ -155,7 +169,9 @@ export default function MapTab({
       if (placingRef.current) onPlacedRef.current(e.latlng.lat, e.latlng.lng);
     });
 
-    fitContent();
+    // A "지도에서 보기" jump centres on that spot; otherwise fit all markers.
+    if (focus) map.setView([focus.lat, focus.lng], 16);
+    else fitContent();
     // The map mounts inside a slide-animated (transformed) container; nudge
     // Leaflet to re-measure once layout settles and again after the animation.
     const t0 = window.setTimeout(() => map.invalidateSize(), 60);
@@ -191,10 +207,10 @@ export default function MapTab({
       }
     }
     for (const p of pins) {
-      const sig = `${p.lat}|${p.lng}|${p.emoji}|${p.color}`;
+      const sig = `${p.lat}|${p.lng}|${p.icon}|${p.color}|${p.fromList ? 1 : 0}`;
       let m = markers.get(p.id);
       if (!m) {
-        m = L.marker([p.lat, p.lng], { icon: pinIcon(p.emoji, p.color), keyboard: false });
+        m = L.marker([p.lat, p.lng], { icon: pinIcon(p.icon, p.color, !!p.fromList), keyboard: false });
         // Look the pin up fresh on click so the handler never goes stale.
         m.on('click', () => {
           const cur = pinsRef.current.find((x) => x.id === p.id);
@@ -205,7 +221,7 @@ export default function MapTab({
         sigs.set(p.id, sig);
       } else if (sigs.get(p.id) !== sig) {
         m.setLatLng([p.lat, p.lng]);
-        m.setIcon(pinIcon(p.emoji, p.color));
+        m.setIcon(pinIcon(p.icon, p.color, !!p.fromList));
         sigs.set(p.id, sig);
       }
     }
@@ -309,6 +325,10 @@ export default function MapTab({
   const shareErrText =
     shareError === 'denied' ? T.locDenied : shareError === 'unavailable' ? T.locUnavailable : '';
 
+  // The saved-places list shows manual pins only; 맛집/액티비티 locations
+  // (`fromList`) appear as map markers but live in their own tabs, not here.
+  const listPins = pins.filter((p) => !p.fromList);
+
   return (
     <div data-screen-label="지도" style={css('display:flex;flex-direction:column;gap:10px')}>
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>
@@ -390,13 +410,13 @@ export default function MapTab({
               zIndex: 1000,
             }}
           >
-            <span
-              style={css("font-family:'Material Symbols Rounded';font-size:19px;line-height:1;flex:none")}
-            >
-              pin_drop
-            </span>
+            <Icon name="pin_drop" size={19} />
             <span style={css('flex:1;font-size:12.5px;font-weight:600;line-height:1.4')}>
-              {placing.kind === 'move' ? T.pinMoveHint : T.pinPlaceHint}
+              {placing.kind === 'move'
+                ? T.pinMoveHint
+                : placing.kind === 'item'
+                  ? T.itemPlaceHint
+                  : T.pinPlaceHint}
             </span>
             <button
               onClick={onCancelPlace}
@@ -429,9 +449,7 @@ export default function MapTab({
                 pointerEvents: 'auto',
               }}
             >
-              <span style={css("font-family:'Material Symbols Rounded';font-size:19px;line-height:1")}>
-                add_location_alt
-              </span>
+              <Icon name="add_location_alt" size={19} />
               {T.pinAdd}
             </button>
             <button
@@ -443,9 +461,7 @@ export default function MapTab({
                 pointerEvents: 'auto',
               }}
             >
-              <span style={css("font-family:'Material Symbols Rounded';font-size:19px;line-height:1")}>
-                {sharing ? 'location_on' : 'share_location'}
-              </span>
+              <Icon name={sharing ? 'location_on' : 'share_location'} size={19} />
               {sharing ? T.shareOn : T.shareLoc}
             </button>
           </div>
@@ -459,9 +475,7 @@ export default function MapTab({
           `min-height:48px;border-radius:13px;border:1.5px solid ${sharing ? '#1FAF6B' : '#BBDCF2'};background:${sharing ? '#1FAF6B' : '#FFFFFF'};color:${sharing ? '#FFFFFF' : '#0B7CD8'};font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px`,
         )}
       >
-        <span style={css("font-family:'Material Symbols Rounded';font-size:20px;line-height:1")}>
-          {sharing ? 'location_on' : 'share_location'}
-        </span>
+        <Icon name={sharing ? 'location_on' : 'share_location'} size={20} />
         {sharing ? `${T.shareOn} · ${T.shareStop}` : T.shareLoc}
       </button>
       {shareErrText ? (
@@ -470,7 +484,7 @@ export default function MapTab({
             'display:flex;align-items:flex-start;gap:6px;background:#FFF5F5;border-radius:11px;padding:8px 10px;font-size:11.5px;color:#C0524B;line-height:1.5',
           )}
         >
-          <span style={css('flex:none')}>⚠️</span>
+          <Icon name="warning" size={15} color="#C0524B" style={css('margin-top:1px')} />
           <span>{shareErrText}</span>
         </div>
       ) : (
@@ -484,10 +498,10 @@ export default function MapTab({
         <div style={css("font-family:'Jua',sans-serif;font-size:16px;color:#164A6B")}>
           {T.pinListTitle}
         </div>
-        <span style={css('font-size:12px;color:#8FAEC4;font-weight:600')}>{pins.length}</span>
+        <span style={css('font-size:12px;color:#8FAEC4;font-weight:600')}>{listPins.length}</span>
       </div>
 
-      {pins.length === 0 ? (
+      {listPins.length === 0 ? (
         <div
           style={css(
             'background:#FFFFFF;border-radius:16px;padding:22px 14px;text-align:center;font-size:12.5px;color:#8FAEC4;box-shadow:0 3px 12px rgba(60,130,190,.07)',
@@ -497,7 +511,7 @@ export default function MapTab({
         </div>
       ) : (
         <div style={css('display:flex;flex-direction:column;gap:8px')}>
-          {pins.map((p) => (
+          {listPins.map((p) => (
             <div
               key={p.id}
               onClick={() => focusPin(p)}
@@ -507,10 +521,10 @@ export default function MapTab({
             >
               <span
                 style={css(
-                  `width:34px;height:34px;flex:none;border-radius:50%;background:#F2F9FE;border:2px solid ${p.color};display:flex;align-items:center;justify-content:center;font-size:17px`,
+                  `width:34px;height:34px;flex:none;border-radius:50%;background:#F2F9FE;border:2px solid ${p.color};display:flex;align-items:center;justify-content:center`,
                 )}
               >
-                {p.emoji}
+                <Icon name={p.icon} size={19} color={p.color} />
               </span>
               <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;gap:2px')}>
                 <div style={css('display:flex;align-items:center;gap:6px;flex-wrap:wrap')}>
@@ -548,7 +562,7 @@ export default function MapTab({
                   </div>
                 )}
               </div>
-              <span style={css('flex:none;color:#B8D3E6;font-size:20px;font-weight:600')}>›</span>
+              <Icon name="chevron_right" size={22} color="#B8D3E6" />
             </div>
           ))}
         </div>
@@ -562,7 +576,7 @@ function MapCtrlButton({
   label,
   onTap,
 }: {
-  icon: string;
+  icon: IconName;
   label: string;
   onTap: () => void;
 }) {
@@ -577,9 +591,7 @@ function MapCtrlButton({
         pointerEvents: 'auto',
       }}
     >
-      <span style={css("font-family:'Material Symbols Rounded';font-size:22px;line-height:1")}>
-        {icon}
-      </span>
+      <Icon name={icon} size={22} />
     </button>
   );
 }

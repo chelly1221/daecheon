@@ -1,4 +1,5 @@
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang } from '../types';
 import type { FoodView } from '../viewmodels';
@@ -49,6 +50,20 @@ export default function FoodTab({ L, lang, foods, onAdd }: Props) {
                   <AutoText text={f.name} to={lang} />
                 </span>
                 {f.linkShow && <LinkIcon href={f.link} />}
+                {f.locShow && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      f.onMap();
+                    }}
+                    aria-label={L.viewOnMap}
+                    style={css(
+                      'display:inline-flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;border:none;background:transparent;color:#0B7CD8;padding:0',
+                    )}
+                  >
+                    <Icon name="place" size={18} />
+                  </button>
+                )}
               </div>
               {f.memoShow && (
                 <div style={css('font-size:12.5px;color:#5A7D96;line-height:1.5')}>
@@ -58,11 +73,7 @@ export default function FoodTab({ L, lang, foods, onAdd }: Props) {
             </div>
             <div style={css('display:flex;align-items:center;gap:7px;flex:none')}>
               {f.commentCount > 0 && <CommentBadge n={f.commentCount} />}
-              <span
-                style={css('color:#B8D3E6;font-size:20px;line-height:1.2;font-weight:600')}
-              >
-                ›
-              </span>
+              <Icon name="chevron_right" size={22} color="#B8D3E6" />
             </div>
           </div>
           {f.edChips.length > 0 && (

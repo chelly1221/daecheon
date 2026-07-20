@@ -2,18 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { css } from './css';
 import { KEY, MEMBERS, RESORT, TIDES, defaultDoc, normLink, pinCatDef } from './data';
-import {
-  ACT_DESC_ZH,
-  FOOD_MEMO_ZH,
-  FOOD_TYPE_ZH,
-  LIST_TITLE,
-  UI,
-  WDESC_ZH,
-} from './i18n';
+import { ACT_DESC_ZH, FOOD_MEMO_ZH, LIST_TITLE, UI, WDESC_ZH } from './i18n';
 import { devId, useSync } from './hooks/useSync';
 import { useWeather } from './hooks/useWeather';
 import { MediaError, isVideoFile, mediaUrl, uploadMedia } from './media';
 import type { PhotoUpload } from './media';
+import type { IconName } from './icons';
 import type {
   Activity,
   Comment,
@@ -110,7 +104,7 @@ const FALLBACK_WEATHER: Weather[] = [
   { date: '8/5', hi: 30, lo: 24, pp: '40%', desc: '소나기 가능' },
   { date: '8/6', hi: 31, lo: 25, pp: '30%', desc: '대체로 맑음' },
 ];
-const NAV_DEFS: [Tab, string][] = [
+const NAV_DEFS: [Tab, IconName][] = [
   ['home', 'home'],
   ['act', 'surfing'],
   ['pack', 'checklist'],
@@ -150,6 +144,12 @@ export default function App() {
   const [fLink, setFLink] = useState('');
   const [fCat, setFCat] = useState<'shared' | 'personal'>('shared');
   const [fAsg, setFAsg] = useState<string[]>([]);
+  // Optional map location being edited for a 맛집/액티비티 (null = unset). Picked
+  // by arming the map from the edit sheet (placing.kind === 'item').
+  const [fLat, setFLat] = useState<number | null>(null);
+  const [fLng, setFLng] = useState<number | null>(null);
+  // One-shot map centre when jumping from a list card / detail to the map tab.
+  const [mapFocus, setMapFocus] = useState<{ lat: number; lng: number } | null>(null);
   const [slideDir, setSlideDir] = useState(0); // tab-change direction for the slide anim
   // Map: pin editor sheet, pin-placement arming, and live location sharing.
   const [pinSheet, setPinSheet] = useState<{
@@ -298,6 +298,9 @@ export default function App() {
     const oi = TAB_ORDER.indexOf(tab);
     const ni = TAB_ORDER.indexOf(t);
     setSlideDir(ni < oi ? -1 : 1);
+    // A one-shot map focus (jump-to-marker) only applies to the visit it was set
+    // for — drop it once we leave the map so a later manual visit fits all pins.
+    if (tab === 'map' && t !== 'map' && mapFocus) setMapFocus(null);
     setTab(t);
     // Leaving the map disarms any pin placement — otherwise `placing` would stay
     // set and silently kill tab-swipe on every tab with no way to cancel there.
@@ -311,6 +314,8 @@ export default function App() {
     setFLink('');
     setFCat('shared');
     setFAsg([]);
+    setFLat(null);
+    setFLng(null);
   };
   const openEditAct = (a: Activity) => {
     sync.touch(a.id);
@@ -320,6 +325,8 @@ export default function App() {
     setFLink(a.link || '');
     setFCat('shared');
     setFAsg([]);
+    setFLat(a.lat ?? null);
+    setFLng(a.lng ?? null);
   };
   const openEditFood = (f: Food) => {
     sync.touch(f.id);
@@ -329,6 +336,8 @@ export default function App() {
     setFLink(f.link || '');
     setFCat('shared');
     setFAsg([]);
+    setFLat(f.lat ?? null);
+    setFLng(f.lng ?? null);
   };
   const openEditPack = (p: PackItem) => {
     sync.touch(p.id);
@@ -338,6 +347,8 @@ export default function App() {
     setFLink('');
     setFCat(p.cat || 'shared');
     setFAsg(p.assignees ? [...p.assignees] : []);
+    setFLat(null);
+    setFLng(null);
   };
   const openDetail = (list: ListKey, id: string) => setDetail({ list, id });
   const editFromDetail = () => {
@@ -408,7 +419,36 @@ export default function App() {
     setPinSheet(null);
     setPlacing({ kind: 'new' });
   };
-  const cancelPlace = () => setPlacing(null);
+  const cancelPlace = () => {
+    const mode = placing;
+    setPlacing(null);
+    // Cancelling an item-location pick returns to the list tab so the edit sheet
+    // (suppressed during the pick) comes back into view.
+    if (mode?.kind === 'item' && sheet) {
+      const back: Tab = sheet.list === 'activities' ? 'act' : 'food';
+      setSlideDir(TAB_ORDER.indexOf(back) < TAB_ORDER.indexOf(tab) ? -1 : 1);
+      setTab(back);
+    }
+  };
+  // From the edit sheet: arm the map so the next tap sets this item's location.
+  // The sheet is suppressed while placing.kind === 'item'; onPlaced/cancelPlace
+  // bring it back. Form state (fName/fMemo/…/fLat/fLng) is preserved throughout.
+  const pickItemLoc = () => {
+    if (!sheet) return;
+    setPlacing({ kind: 'item' });
+    setSlideDir(TAB_ORDER.indexOf('map') < TAB_ORDER.indexOf(tab) ? -1 : 1);
+    setTab('map');
+  };
+  const removeItemLoc = () => {
+    setFLat(null);
+    setFLng(null);
+  };
+  // Jump from a list card / detail to the map, centred on that item's location.
+  const jumpToMap = (lat: number, lng: number) => {
+    setDetail(null);
+    setMapFocus({ lat, lng });
+    changeTab('map');
+  };
   const openPinEdit = (p: Pin) => {
     setPlacing(null); // opening an editor cancels any armed placement/move
     sync.touch(p.id); // broadcast a "수정 중" marker, like the list editors
@@ -417,7 +457,8 @@ export default function App() {
     setPMemo(p.memo || '');
     setPCat(p.cat);
   };
-  // A tap on the armed map: place the new pin's editor, or reposition an existing pin.
+  // A tap on the armed map: place the new pin's editor, reposition an existing
+  // pin, or capture a 맛집/액티비티 item's location for its (suppressed) editor.
   const onPlaced = (lat: number, lng: number) => {
     const mode = placing;
     setPlacing(null);
@@ -427,10 +468,20 @@ export default function App() {
       setPName('');
       setPMemo('');
       setPCat('place');
-    } else {
+    } else if (mode.kind === 'move') {
       const now = sync.nextTs();
       setPins((prev) => prev.map((p) => (p.id !== mode.id ? p : { ...p, lat, lng, ts: now })));
       sync.pushSoon();
+    } else {
+      // 'item': stash the tapped point into the edit sheet's form and return to
+      // the list tab it was opened from, where the sheet reappears with the spot.
+      setFLat(lat);
+      setFLng(lng);
+      if (sheet) {
+        const back: Tab = sheet.list === 'activities' ? 'act' : 'food';
+        setSlideDir(TAB_ORDER.indexOf(back) < TAB_ORDER.indexOf(tab) ? -1 : 1);
+        setTab(back);
+      }
     }
   };
   const pinSheetSave = () => {
@@ -562,12 +613,16 @@ export default function App() {
     const memo = fMemo.trim();
     const cat = fCat;
     const link = (fLink || '').trim();
+    // Optional map location for 맛집/액티비티. `undefined` (not null) so an unset
+    // or just-removed location drops the field on serialize rather than storing 0.
+    const lat = fLat ?? undefined;
+    const lng = fLng ?? undefined;
     const now = sync.nextTs();
     if (sheet.mode === 'add') {
       if (sheet.list === 'activities') {
         setActivities((prev) => [
           ...prev,
-          { id: 'x' + now, name: n, zh: '', desc: memo, link, votes: [], ts: now },
+          { id: 'x' + now, name: n, zh: '', desc: memo, link, votes: [], lat, lng, ts: now },
         ]);
       } else if (sheet.list === 'packing') {
         setPacking((prev) => [
@@ -577,7 +632,7 @@ export default function App() {
       } else {
         setFoods((prev) => [
           ...prev,
-          { id: 'x' + now, name: n, zh: '', type: '추가', memo, link, likes: [], ts: now },
+          { id: 'x' + now, name: n, zh: '', memo, link, likes: [], lat, lng, ts: now },
         ]);
       }
     } else {
@@ -587,13 +642,15 @@ export default function App() {
           prev.map((it) =>
             it.id !== id
               ? it
-              : { ...it, name: n, zh: it.name === n ? it.zh : '', desc: memo, link, ts: now },
+              : { ...it, name: n, zh: it.name === n ? it.zh : '', desc: memo, link, lat, lng, ts: now },
           ),
         );
       } else if (sheet.list === 'foods') {
         setFoods((prev) =>
           prev.map((it) =>
-            it.id !== id ? it : { ...it, name: n, zh: it.name === n ? it.zh : '', memo, link, ts: now },
+            it.id !== id
+              ? it
+              : { ...it, name: n, zh: it.name === n ? it.zh : '', memo, link, lat, lng, ts: now },
           ),
         );
       } else {
@@ -696,6 +753,7 @@ export default function App() {
 
   const acts: ActView[] = activities.filter((a) => !a.del).map((a) => {
     const desc = zh ? ACT_DESC_ZH[a.id] || a.desc || '' : a.desc || '';
+    const hasLoc = a.lat != null && a.lng != null;
     return {
       id: a.id,
       name: zh && a.zh ? a.zh : a.name,
@@ -705,22 +763,26 @@ export default function App() {
       linkShow: !!a.link,
       commentCount: liveCount(a.id),
       edChips: edFor(a.id),
+      locShow: hasLoc,
+      onMap: () => hasLoc && jumpToMap(a.lat as number, a.lng as number),
       onTap: () => openDetail('activities', a.id),
     };
   });
 
   const foodList: FoodView[] = foods.filter((f) => !f.del).map((f) => {
     const memo = zh ? FOOD_MEMO_ZH[f.id] || f.memo || '' : f.memo || '';
+    const hasLoc = f.lat != null && f.lng != null;
     return {
       id: f.id,
       name: zh && f.zh ? f.zh : f.name,
-      type: zh ? FOOD_TYPE_ZH[f.type] || f.type || '其他' : f.type || '기타',
       memo,
       memoShow: !!memo,
       link: normLink(f.link),
       linkShow: !!f.link,
       commentCount: liveCount(f.id),
       edChips: edFor(f.id),
+      locShow: hasLoc,
+      onMap: () => hasLoc && jumpToMap(f.lat as number, f.lng as number),
       onTap: () => openDetail('foods', f.id),
     };
   });
@@ -879,6 +941,9 @@ export default function App() {
     meta: string;
     link: string;
     linkShow: boolean;
+    mapShow: boolean;
+    lat?: number;
+    lng?: number;
   } | null = null;
   if (detail) {
     if (detail.list === 'activities') {
@@ -890,16 +955,22 @@ export default function App() {
           meta: zh ? ACT_DESC_ZH[a.id] || a.desc || '' : a.desc || '',
           link: normLink(a.link),
           linkShow: !!a.link,
+          mapShow: a.lat != null && a.lng != null,
+          lat: a.lat,
+          lng: a.lng,
         };
     } else if (detail.list === 'foods') {
       const f = foods.find((x) => x.id === detail.id && !x.del);
       if (f)
         detailVM = {
           title: zh && f.zh ? f.zh : f.name,
-          typeLabel: zh ? FOOD_TYPE_ZH[f.type] || f.type || '' : f.type || '',
+          typeLabel: '',
           meta: zh ? FOOD_MEMO_ZH[f.id] || f.memo || '' : f.memo || '',
           link: normLink(f.link),
           linkShow: !!f.link,
+          mapShow: f.lat != null && f.lng != null,
+          lat: f.lat,
+          lng: f.lng,
         };
     } else {
       const p = packing.find((x) => x.id === detail.id && !x.del);
@@ -910,6 +981,7 @@ export default function App() {
           meta: '',
           link: '',
           linkShow: false,
+          mapShow: false,
         };
     }
   }
@@ -954,7 +1026,7 @@ export default function App() {
         memo: p.memo || '',
         memoShow: !!(p.memo && p.memo.trim()),
         cat: def.id,
-        emoji: def.emoji,
+        icon: def.icon,
         color: def.color,
         catLabel: zh ? def.zh : def.ko,
         by: who ? who.name : '',
@@ -964,6 +1036,51 @@ export default function App() {
         onTap: () => openPinEdit(p),
       };
     });
+
+  // 맛집/액티비티 that carry a location → extra markers folded onto the map, drawn
+  // in a distinct filled style (`fromList`). Tapping opens the item's detail (not
+  // a pin editor); they're kept out of the saved-pins list, which is manual pins
+  // only. Ids are namespaced so they never collide with real pin ids.
+  const itemPinViews: PinView[] = [];
+  for (const a of activities) {
+    if (a.del || a.lat == null || a.lng == null) continue;
+    itemPinViews.push({
+      id: 'act:' + a.id,
+      label: zh && a.zh ? a.zh : a.name,
+      memo: '',
+      memoShow: false,
+      cat: 'play',
+      icon: 'surfing',
+      color: '#0B7CD8',
+      catLabel: L.act,
+      by: '',
+      lat: a.lat,
+      lng: a.lng,
+      edChips: [],
+      onTap: () => openDetail('activities', a.id),
+      fromList: true,
+    });
+  }
+  for (const f of foods) {
+    if (f.del || f.lat == null || f.lng == null) continue;
+    itemPinViews.push({
+      id: 'food:' + f.id,
+      label: zh && f.zh ? f.zh : f.name,
+      memo: '',
+      memoShow: false,
+      cat: 'food',
+      icon: 'restaurant',
+      color: '#E8503A',
+      catLabel: zh ? '美食' : '맛집',
+      by: '',
+      lat: f.lat,
+      lng: f.lng,
+      edChips: [],
+      onTap: () => openDetail('foods', f.id),
+      fromList: true,
+    });
+  }
+  const mapPins = [...pinViews, ...itemPinViews];
 
   // Live shared locations from presence (+ my own fix, rendered fresh). A marker
   // shows while the peer's presence is alive (so a stationary sharer whose fix
@@ -1102,9 +1219,10 @@ export default function App() {
                 <MapTab
                   L={L}
                   lang={lang}
-                  pins={pinViews}
+                  pins={mapPins}
                   liveLocs={liveLocs}
                   center={RESORT}
+                  focus={mapFocus}
                   sharing={sharing}
                   shareError={shareError}
                   placing={placing}
@@ -1145,6 +1263,12 @@ export default function App() {
             meta={detailVM.meta}
             link={detailVM.link}
             linkShow={detailVM.linkShow}
+            mapShow={detailVM.mapShow}
+            onMap={() => {
+              if (detailVM && detailVM.lat != null && detailVM.lng != null) {
+                jumpToMap(detailVM.lat, detailVM.lng);
+              }
+            }}
             comments={detailComments}
             onSend={(text, replyTo, media) => addComment(detail.id, text, replyTo, media)}
             onDelete={(id) => deleteComment(detail.id, id)}
@@ -1160,7 +1284,7 @@ export default function App() {
             onClose={() => setProfileOpen(false)}
           />
         )}
-        {sheet && (
+        {sheet && !placing && (
           <EditSheet
             L={L}
             title={sheetTitle}
@@ -1168,16 +1292,20 @@ export default function App() {
             showMemo={sheet.list !== 'packing'}
             showCat={sheet.list === 'packing'}
             showAsg={sheet.list === 'packing' && fCat === 'shared'}
+            showLoc={sheet.list !== 'packing'}
             showDelete={sheet.mode === 'edit'}
             fName={fName}
             fMemo={fMemo}
             fLink={fLink}
             fCat={fCat}
+            hasLoc={fLat != null && fLng != null}
             asgChips={asgChips}
             onName={setFName}
             onMemo={setFMemo}
             onLink={setFLink}
             onCat={setFCat}
+            onPickLoc={pickItemLoc}
+            onRemoveLoc={removeItemLoc}
             onSave={sheetSave}
             onDelete={doDelete}
             onClose={() => setSheet(null)}

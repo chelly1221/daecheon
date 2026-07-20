@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
+import type { IconName } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang, MediaRef } from '../types';
 import { MediaError, type MediaErrorCode, isVideoFile, uploadMedia } from '../media';
@@ -41,10 +43,14 @@ interface Props {
   lang: Lang;
   roomId: string;
   title: string;
-  typeLabel: string; // e.g. food category chip; '' to hide
+  typeLabel: string; // e.g. 공용/개인 chip (packing); '' to hide
   meta: string; // desc / memo; '' to hide
   link: string;
   linkShow: boolean;
+  /** Show the "지도에서 보기" jump control (맛집/액티비티 that carry a location). */
+  mapShow: boolean;
+  /** Jump to the map focused on this item's location. */
+  onMap: () => void;
   comments: DetailComment[];
   onSend: (text: string, replyTo?: string, media?: MediaRef) => void;
   onDelete: (id: string) => void;
@@ -72,6 +78,8 @@ export default function ItemDetail({
   meta,
   link,
   linkShow,
+  mapShow,
+  onMap,
   comments,
   onSend,
   onDelete,
@@ -274,6 +282,17 @@ export default function ItemDetail({
                 <AutoText text={meta} to={lang} />
               </div>
             )}
+            {mapShow && (
+              <button
+                onClick={onMap}
+                style={css(
+                  'align-self:flex-start;display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:3px 12px 3px 9px;border-radius:999px;border:1.5px solid #BBDCF2;background:#F2F9FE;color:#0B7CD8;font-size:12px;font-weight:700',
+                )}
+              >
+                <Icon name="place" size={15} />
+                {L.viewOnMap}
+              </button>
+            )}
           </div>
           <button
             onClick={onEdit}
@@ -281,18 +300,17 @@ export default function ItemDetail({
               "flex:none;display:inline-flex;align-items:center;gap:4px;min-height:34px;padding:0 13px;border-radius:999px;border:1.5px solid #CFE6F6;background:#F2F9FE;color:#0B7CD8;font-family:'Jua',sans-serif;font-size:13px",
             )}
           >
-            <span style={css("font-family:'Material Symbols Rounded';font-size:16px;line-height:1")}>
-              edit
-            </span>
+            <Icon name="edit" size={16} />
             {L.edit}
           </button>
           <button
             onClick={onClose}
+            aria-label={L.close}
             style={css(
-              'flex:none;width:32px;height:32px;border-radius:50%;border:none;background:#EFF6FB;color:#6B8BA3;font-size:14px;font-weight:700;padding:0',
+              'flex:none;width:32px;height:32px;border-radius:50%;border:none;background:#EFF6FB;color:#6B8BA3;display:flex;align-items:center;justify-content:center;padding:0',
             )}
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
 
@@ -300,9 +318,7 @@ export default function ItemDetail({
 
         {/* Comments label */}
         <div style={css('display:flex;align-items:center;gap:6px')}>
-          <span style={css("font-family:'Material Symbols Rounded';font-size:18px;color:#0B7CD8")}>
-            chat_bubble
-          </span>
+          <Icon name="chat_bubble" size={18} color="#0B7CD8" />
           <span style={css('font-size:13.5px;font-weight:700;color:#22597C')}>{L.comments}</span>
           {comments.length > 0 && (
             <span style={css('font-size:12px;color:#8FAEC4;font-weight:600')}>{comments.length}</span>
@@ -346,13 +362,7 @@ export default function ItemDetail({
                 'display:flex;align-items:center;gap:9px;background:#EEF6FC;border:1px solid #DCEAF4;border-radius:12px;padding:7px 8px 7px 11px',
               )}
             >
-              <span
-                style={css(
-                  "font-family:'Material Symbols Rounded';font-size:17px;color:#0B7CD8;line-height:1;flex:none",
-                )}
-              >
-                reply
-              </span>
+              <Icon name="reply" size={17} color="#0B7CD8" />
               <div style={css('flex:1;min-width:0')}>
                 <div style={css('font-size:11px;font-weight:700;color:#3E6A8C')}>
                   {L.reply} · {reply.name}
@@ -369,10 +379,10 @@ export default function ItemDetail({
                 onClick={() => setReply(null)}
                 aria-label="cancel reply"
                 style={css(
-                  'flex:none;width:26px;height:26px;border-radius:50%;border:none;background:#DCEAF4;color:#5A7D96;font-size:13px;font-weight:700;padding:0',
+                  'flex:none;width:26px;height:26px;border-radius:50%;border:none;background:#DCEAF4;color:#5A7D96;display:flex;align-items:center;justify-content:center;padding:0',
                 )}
               >
-                ✕
+                <Icon name="close" size={14} />
               </button>
             </div>
           )}
@@ -382,13 +392,12 @@ export default function ItemDetail({
                 'display:flex;align-items:center;gap:9px;background:#EEF6FC;border:1px solid #DCEAF4;border-radius:12px;padding:8px 11px',
               )}
             >
-              <span
-                style={css(
-                  "font-family:'Material Symbols Rounded';font-size:17px;color:#0B7CD8;line-height:1;flex:none;animation:pulse 1.2s ease-in-out infinite",
-                )}
-              >
-                {sending.isVideo ? 'movie' : 'image'}
-              </span>
+              <Icon
+                name={sending.isVideo ? 'movie' : 'image'}
+                size={17}
+                color="#0B7CD8"
+                style={css('animation:pulse 1.2s ease-in-out infinite')}
+              />
               <div style={css('flex:1;min-width:0')}>
                 <div style={css('font-size:11.5px;font-weight:700;color:#3E6A8C')}>
                   {L.uploading} {Math.round(sending.progress * 100)}%
@@ -422,9 +431,7 @@ export default function ItemDetail({
                 `flex:none;width:46px;height:46px;border-radius:50%;border:1px solid #D5E7F3;background:#F2F9FE;color:#0B7CD8;display:flex;align-items:center;justify-content:center;padding:0;opacity:${sending ? 0.5 : 1}`,
               )}
             >
-              <span style={css("font-family:'Material Symbols Rounded';font-size:22px;line-height:1")}>
-                add_photo_alternate
-              </span>
+              <Icon name="add_photo_alternate" size={22} />
             </button>
             <input
               ref={inputRef}
@@ -443,9 +450,7 @@ export default function ItemDetail({
                 'flex:none;width:46px;height:46px;border-radius:50%;border:none;background:#0B7CD8;color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0',
               )}
             >
-              <span style={css("font-family:'Material Symbols Rounded';font-size:20px;line-height:1")}>
-                send
-              </span>
+              <Icon name="send" size={20} />
             </button>
           </div>
         </div>
@@ -633,13 +638,7 @@ function MessageBubble({
                   'width:180px;height:135px;background:#0B2536;display:flex;align-items:center;justify-content:center',
                 )}
               >
-                <span
-                  style={css(
-                    "font-family:'Material Symbols Rounded';font-size:34px;color:#7FB2DC;line-height:1",
-                  )}
-                >
-                  movie
-                </span>
+                <Icon name="movie" size={34} color="#7FB2DC" />
               </div>
             )}
             {c.media.kind === 'video' && (
@@ -648,13 +647,7 @@ function MessageBubble({
                   'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:rgba(6,20,32,.5);display:flex;align-items:center;justify-content:center',
                 )}
               >
-                <span
-                  style={css(
-                    "font-family:'Material Symbols Rounded';font-size:24px;color:#FFFFFF;line-height:1",
-                  )}
-                >
-                  play_arrow
-                </span>
+                <Icon name="play_arrow" size={24} color="#FFFFFF" />
               </span>
             )}
           </div>
@@ -744,7 +737,7 @@ function MessageMenu({
   const left = clamp(menu.x - W / 2, 8, vw - W - 8);
   const top = clamp(menu.y + 8, 8, vh - H - 8);
 
-  const item = (icon: string, label: string, onTap: () => void, danger?: boolean) => (
+  const item = (icon: IconName, label: string, onTap: () => void, danger?: boolean) => (
     <button
       onClick={onTap}
       style={css(
@@ -753,15 +746,7 @@ function MessageMenu({
         }`,
       )}
     >
-      <span
-        style={css(
-          `font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:${
-            danger ? '#E8503A' : '#5A88A8'
-          }`,
-        )}
-      >
-        {icon}
-      </span>
+      <Icon name={icon} size={19} color={danger ? '#E8503A' : '#5A88A8'} />
       {label}
     </button>
   );
@@ -800,13 +785,7 @@ function TranslatedNote({ text, to }: { text: string; to: Lang }) {
   if (tr === text) return null;
   return (
     <div style={css('display:flex;align-items:flex-start;gap:4px;max-width:80%')}>
-      <span
-        style={css(
-          "font-family:'Material Symbols Rounded';font-size:13px;color:#9DBBD0;line-height:1.5;flex:none",
-        )}
-      >
-        translate
-      </span>
+      <Icon name="translate" size={13} color="#9DBBD0" style={css('margin-top:2px')} />
       <span style={css('font-size:11.5px;color:#8AA9C0;line-height:1.5')}>{tr}</span>
     </div>
   );

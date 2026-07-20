@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang, TideExtreme, Weather, WeatherHours } from '../types';
 import WeatherDetail from './WeatherDetail';
@@ -44,13 +45,7 @@ export default function HomeTab({ L, lang, weatherDays, weatherNote, tides, hour
       >
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>
           <div style={css("font-family:'Jua',sans-serif;font-size:16.5px")}>{L.mudTitle}</div>
-          <span
-            style={css(
-              "font-family:'Material Symbols Rounded';font-size:18px;line-height:1;opacity:.9;flex:none",
-            )}
-          >
-            open_in_new
-          </span>
+          <Icon name="open_in_new" size={18} style={css('opacity:.9')} />
         </div>
         <div style={css('font-size:12.5px;line-height:1.6;opacity:.95')}>
           {L.mudBody1}
@@ -117,7 +112,7 @@ export default function HomeTab({ L, lang, weatherDays, weatherNote, tides, hour
             'display:flex;align-items:flex-start;gap:6px;background:#FBF3E7;border-radius:11px;padding:8px 10px',
           )}
         >
-          <span style={css('font-size:13px;line-height:1.5;flex:none')}>💡</span>
+          <Icon name="lightbulb" size={15} color="#C89B3C" style={css('margin-top:1px')} />
           <span style={css('font-size:11.5px;color:#8A6A44;line-height:1.5')}>{L.tideHint}</span>
         </div>
         <div style={css('font-size:11px;color:#9FBBD0;line-height:1.5')}>{L.tideSource}</div>
@@ -199,13 +194,7 @@ function DayCard({
         {L.rain} {w.pp}
       </div>
       {tappable && (
-        <span
-          style={css(
-            "font-family:'Material Symbols Rounded';font-size:15px;line-height:1;color:#66A3E0;margin-top:1px",
-          )}
-        >
-          schedule
-        </span>
+        <Icon name="schedule" size={15} color="#66A3E0" style={css('margin-top:1px')} />
       )}
     </>
   );

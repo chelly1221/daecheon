@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 import {
   canPromptInstall,
@@ -105,9 +106,7 @@ export default function ProfileModal({ L, zh, meChips, onClose }: Props) {
                   'display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;color:#1D9E7A;font-size:13.5px;font-weight:600',
                 )}
               >
-                <span style={css("font-family:'Material Symbols Rounded';font-size:18px")}>
-                  check_circle
-                </span>
+                <Icon name="check_circle" size={18} />
                 {t.installed}
               </div>
             ) : (
@@ -117,9 +116,7 @@ export default function ProfileModal({ L, zh, meChips, onClose }: Props) {
                   "min-height:48px;border:none;border-radius:12px;background:#0B7CD8;color:#FFFFFF;font-family:'Jua',sans-serif;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:7px",
                 )}
               >
-                <span style={css("font-family:'Material Symbols Rounded';font-size:19px;line-height:1")}>
-                  install_mobile
-                </span>
+                <Icon name="install_mobile" size={19} />
                 {t.install}
               </button>
             )}

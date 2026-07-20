@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
+import type { IconName } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang } from '../types';
 import type { PhotoView } from '../viewmodels';
@@ -202,9 +204,7 @@ export default function PhotoTab({
             'margin-top:6px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 16px;border-radius:16px;border:1.5px dashed #BFDCF0;background:#FFFFFF;color:#7FA6C1',
           )}
         >
-          <span style={css("font-family:'Material Symbols Rounded';font-size:40px;color:#AFD0E8")}>
-            add_a_photo
-          </span>
+          <Icon name="add_a_photo" size={40} color="#AFD0E8" />
           <span style={css('font-size:13px;color:#8FAEC4;text-align:center;line-height:1.5')}>
             {L.photoEmpty}
           </span>
@@ -280,7 +280,7 @@ function SelectionBar({
 }) {
   const none = count === 0;
   const iconBtn = (
-    icon: string,
+    icon: IconName,
     label: string,
     onClick: () => void,
     disabled: boolean,
@@ -294,9 +294,7 @@ function SelectionBar({
         `flex:none;width:36px;height:36px;border-radius:50%;border:none;background:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0;opacity:${disabled ? 0.4 : 1}`,
       )}
     >
-      <span style={css(`font-family:'Material Symbols Rounded';font-size:20px;line-height:1;color:${tint}`)}>
-        {icon}
-      </span>
+      <Icon name={icon} size={20} color={tint} />
     </button>
   );
 
@@ -311,19 +309,17 @@ function SelectionBar({
           onClick={onExit}
           aria-label={L.close}
           style={css(
-            'flex:none;width:34px;height:34px;border-radius:50%;border:none;background:#FFFFFF;color:#4A7492;font-size:15px;font-weight:700;padding:0',
+            'flex:none;width:34px;height:34px;border-radius:50%;border:none;background:#FFFFFF;color:#4A7492;display:flex;align-items:center;justify-content:center;padding:0',
           )}
         >
-          ✕
+          <Icon name="close" size={18} />
         </button>
         <div style={css('flex:1;min-width:0;display:flex;align-items:center;gap:6px')}>
-          <span
-            style={css(
-              `font-family:'Material Symbols Rounded';font-size:20px;line-height:1;color:${none ? '#9DBAD0' : '#0B7CD8'}`,
-            )}
-          >
-            {none ? 'radio_button_unchecked' : 'check_circle'}
-          </span>
+          <Icon
+            name={none ? 'radio_button_unchecked' : 'check_circle'}
+            size={20}
+            color={none ? '#9DBAD0' : '#0B7CD8'}
+          />
           <span style={css(`font-size:15px;font-weight:800;color:${none ? '#7C9BB4' : '#164A6B'}`)}>
             {count}
           </span>
@@ -422,10 +418,10 @@ function PhotoTile({
       ) : (
         <span
           style={css(
-            "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Material Symbols Rounded';font-size:30px;color:#9CC0DC",
+            'position:absolute;inset:0;display:flex;align-items:center;justify-content:center',
           )}
         >
-          movie
+          <Icon name="movie" size={30} color="#9CC0DC" />
         </span>
       )}
       {p.kind === 'video' && (
@@ -435,11 +431,7 @@ function PhotoTile({
               'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:rgba(6,20,32,.5);display:flex;align-items:center;justify-content:center',
             )}
           >
-            <span
-              style={css("font-family:'Material Symbols Rounded';font-size:24px;color:#FFFFFF;line-height:1")}
-            >
-              play_arrow
-            </span>
+            <Icon name="play_arrow" size={24} color="#FFFFFF" />
           </span>
           {!!p.dur && p.dur > 0 && (
             <span
@@ -462,12 +454,16 @@ function PhotoTile({
           />
           <span
             style={css(
-              `position:absolute;top:5px;left:5px;width:23px;height:23px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Material Symbols Rounded';font-size:23px;line-height:1;color:${
-                selected ? '#0B7CD8' : '#FFFFFF'
-              };background:${selected ? '#FFFFFF' : 'rgba(6,20,32,.35)'};text-shadow:0 0 3px rgba(0,0,0,.35)`,
+              `position:absolute;top:5px;left:5px;width:23px;height:23px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${
+                selected ? '#FFFFFF' : 'rgba(6,20,32,.35)'
+              }`,
             )}
           >
-            {selected ? 'check_circle' : 'radio_button_unchecked'}
+            <Icon
+              name={selected ? 'check_circle' : 'radio_button_unchecked'}
+              size={23}
+              color={selected ? '#0B7CD8' : '#FFFFFF'}
+            />
           </span>
         </>
       )}
@@ -494,11 +490,9 @@ function UploadTile({
           'aspect-ratio:1;border:1px solid #F3D2C9;border-radius:10px;background:#FDF2EF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;text-align:center',
         )}
       >
-        <span style={css("font-family:'Material Symbols Rounded';font-size:22px;color:#E8503A")}>
-          error
-        </span>
+        <Icon name="error" size={22} color="#E8503A" />
         <span style={css('font-size:9.5px;color:#C0503C;line-height:1.3')}>{errMsg(up.error)}</span>
-        <span style={css('font-size:10px;color:#0B7CD8;font-weight:700')}>↻</span>
+        <Icon name="refresh" size={15} color="#0B7CD8" />
       </button>
     );
   }
@@ -509,13 +503,12 @@ function UploadTile({
         'position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#E4F0FA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px',
       )}
     >
-      <span
-        style={css(
-          `font-family:'Material Symbols Rounded';font-size:26px;color:#7FB2DC;line-height:1;animation:pulse 1.2s ease-in-out infinite`,
-        )}
-      >
-        {up.isVideo ? 'movie' : 'image'}
-      </span>
+      <Icon
+        name={up.isVideo ? 'movie' : 'image'}
+        size={26}
+        color="#7FB2DC"
+        style={css('animation:pulse 1.2s ease-in-out infinite')}
+      />
       <span style={css('font-size:10.5px;color:#5A88A8;font-weight:600')}>
         {label} {pct}%
       </span>

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { css } from '../css';
+import { Icon, WeatherIcon } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang, Weather, WeatherHour } from '../types';
-import { weatherEmoji } from '../hooks/useWeather';
 
 interface Props {
   L: UIStrings;
@@ -44,8 +44,8 @@ export default function WeatherDetail({ L, lang, day, hours, onClose }: Props) {
   const hi = Math.max(...temps);
   const span = Math.max(1, hi - lo);
   // Header condition mirrors the daily card's desc (same daily weather_code),
-  // not a single hour, so the emoji never contradicts the text beside it.
-  const headEmoji = weatherEmoji(day.code ?? hours[0].code);
+  // not a single hour, so the icon never contradicts the text beside it.
+  const headCode = day.code ?? hours[0].code;
 
   return (
     <div
@@ -82,7 +82,7 @@ export default function WeatherDetail({ L, lang, day, hours, onClose }: Props) {
 
         {/* Header: representative condition · date · hi/lo · close */}
         <div style={css('display:flex;align-items:center;gap:10px')}>
-          <span style={css('font-size:26px;line-height:1;flex:none')}>{headEmoji}</span>
+          <WeatherIcon code={headCode} size={34} />
           <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;gap:1px')}>
             <div style={css("font-family:'Jua',sans-serif;font-size:17px;color:#164A6B")}>
               {day.date}
@@ -101,10 +101,10 @@ export default function WeatherDetail({ L, lang, day, hours, onClose }: Props) {
             onClick={onClose}
             aria-label={L.close}
             style={css(
-              'flex:none;width:32px;height:32px;border-radius:50%;border:none;background:#EEF5FB;color:#5E86A0;font-size:15px;font-weight:700;padding:0',
+              'flex:none;width:32px;height:32px;border-radius:50%;border:none;background:#EEF5FB;color:#5E86A0;display:flex;align-items:center;justify-content:center;padding:0',
             )}
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
 
@@ -132,8 +132,8 @@ export default function WeatherDetail({ L, lang, day, hours, onClose }: Props) {
                 >
                   {hourLabel(h.h, lang)}
                 </span>
-                <span style={css('flex:none;font-size:17px;line-height:1;width:22px;text-align:center')}>
-                  {weatherEmoji(h.code)}
+                <span style={css('flex:none;width:22px;display:flex;justify-content:center')}>
+                  <WeatherIcon code={h.code} size={20} />
                 </span>
                 {/* Temperature bar — relative position within the day's range */}
                 <div
@@ -158,11 +158,22 @@ export default function WeatherDetail({ L, lang, day, hours, onClose }: Props) {
                         `font-size:11.5px;font-weight:${rainy ? '700' : '500'};color:${rainy ? '#2E86D6' : '#93B6CE'}`,
                       )}
                     >
-                      💧{h.pp == null ? '–' : h.pp + '%'}
+                      <Icon
+                        name="water_drop"
+                        size={11}
+                        style={css('display:inline-block;vertical-align:-1.5px;margin-right:1px')}
+                      />
+                      {h.pp == null ? '–' : h.pp + '%'}
                     </span>
                   </div>
                   <div style={css('font-size:10.5px;color:#9AB4C8;white-space:nowrap')}>
-                    {L.wFeels} {h.feels}° · 🌬{h.wind}km/h
+                    {L.wFeels} {h.feels}° ·{' '}
+                    <Icon
+                      name="air"
+                      size={11}
+                      style={css('display:inline-block;vertical-align:-1.5px')}
+                    />
+                    {h.wind}km/h
                   </div>
                 </div>
               </div>

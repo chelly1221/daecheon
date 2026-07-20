@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
 import { PIN_CATS } from '../data';
 import type { UIStrings } from '../i18n';
 import type { Lang, PinCat } from '../types';
@@ -63,11 +64,12 @@ export default function PinSheet({
           <div style={css("font-family:'Jua',sans-serif;font-size:18px;color:#164A6B")}>{title}</div>
           <button
             onClick={onClose}
+            aria-label={L.close}
             style={css(
-              'width:32px;height:32px;border-radius:50%;border:none;background:#EFF6FB;color:#6B8BA3;font-size:14px;font-weight:700;padding:0',
+              'width:32px;height:32px;border-radius:50%;border:none;background:#EFF6FB;color:#6B8BA3;display:flex;align-items:center;justify-content:center;padding:0',
             )}
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
 
@@ -100,7 +102,7 @@ export default function PinSheet({
                     `min-height:40px;padding:7px 13px;border-radius:999px;border:1.5px solid ${on ? c.color : '#DCEAF4'};background:${on ? c.color : '#F7FCFF'};color:${on ? '#FFFFFF' : '#5A7D96'};font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px`,
                   )}
                 >
-                  <span style={css('font-size:14px;line-height:1')}>{c.emoji}</span>
+                  <Icon name={c.icon} size={16} color={on ? '#FFFFFF' : c.color} />
                   {lang === 'zh' ? c.zh : c.ko}
                 </button>
               );
@@ -115,11 +117,7 @@ export default function PinSheet({
               'min-height:46px;border:1.5px solid #BBDCF2;border-radius:12px;background:#F2F9FE;color:#0B7CD8;font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px',
             )}
           >
-            <span
-              style={css("font-family:'Material Symbols Rounded';font-size:18px;line-height:1")}
-            >
-              open_with
-            </span>
+            <Icon name="open_with" size={18} />
             {L.pinMove}
           </button>
         )}

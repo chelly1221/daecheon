@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { css } from '../css';
+import { Icon } from '../icons';
 import type { UIStrings } from '../i18n';
 import type { Lang } from '../types';
 import AutoText from './AutoText';
@@ -89,12 +90,12 @@ export default function MediaViewer({ items, index, lang, L, onIndex, onClose, o
       aria-label={dir < 0 ? 'previous' : 'next'}
       disabled={dir < 0 ? i === 0 : i === items.length - 1}
       style={css(
-        `position:absolute;top:50%;${dir < 0 ? 'left:8px' : 'right:8px'};transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#FFFFFF;font-size:22px;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;opacity:${
+        `position:absolute;top:50%;${dir < 0 ? 'left:8px' : 'right:8px'};transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;opacity:${
           (dir < 0 ? i === 0 : i === items.length - 1) ? 0.25 : 1
         }`,
       )}
     >
-      {dir < 0 ? '‹' : '›'}
+      <Icon name={dir < 0 ? 'chevron_left' : 'chevron_right'} size={28} />
     </button>
   );
 
@@ -146,10 +147,10 @@ export default function MediaViewer({ items, index, lang, L, onIndex, onClose, o
           }}
           aria-label={L.close}
           style={css(
-            'flex:none;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#FFFFFF;font-size:15px;font-weight:700;padding:0',
+            'flex:none;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0',
           )}
         >
-          ✕
+          <Icon name="close" size={18} />
         </button>
       </div>
 
@@ -228,9 +229,7 @@ export default function MediaViewer({ items, index, lang, L, onIndex, onClose, o
                   "display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 15px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:#F0C9C1;font-size:13px;font-weight:600",
                 )}
               >
-                <span style={css("font-family:'Material Symbols Rounded';font-size:17px;line-height:1")}>
-                  delete
-                </span>
+                <Icon name="delete" size={17} />
                 {L.del}
               </button>
             )}

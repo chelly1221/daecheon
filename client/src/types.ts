@@ -28,6 +28,10 @@ export interface Activity extends Identified {
   desc: string;
   link?: string;
   votes: string[];
+  /** Optional map location (WGS84 degrees), set from the item editor via the map
+   *  tab. Absent when the item hasn't been placed on the map. */
+  lat?: number;
+  lng?: number;
 }
 
 export interface PackItem extends Identified {
@@ -49,10 +53,13 @@ export interface Food extends Identified {
   id: string;
   name: string;
   zh: string;
-  type: string;
   memo: string;
   link?: string;
   likes: string[];
+  /** Optional map location (WGS84 degrees), set from the item editor via the map
+   *  tab. Absent when the item hasn't been placed on the map. */
+  lat?: number;
+  lng?: number;
 }
 
 /**
@@ -78,7 +85,7 @@ export interface MediaRef {
   dur?: number;
 }
 
-/** Pin category id → marker emoji/color + bilingual label (see `PIN_CATS` in
+/** Pin category id → marker icon/color + bilingual label (see `PIN_CATS` in
  *  data.ts). Kept as a small closed set so pins stay colour-coded on the map. */
 export type PinCat = 'place' | 'food' | 'play' | 'meet' | 'stay' | 'park';
 
@@ -189,7 +196,7 @@ export interface Weather {
   key?: string;
   /** Daily WMO weather_code — the day's most-significant condition, the same
    *  source as {@link desc}. Live data only; drives the detail-sheet header
-   *  emoji so it agrees with the desc text. */
+   *  WeatherIcon so it agrees with the desc text. */
   code?: number;
 }
 
@@ -224,7 +231,7 @@ export interface WeatherHour {
   temp: number;
   /** Apparent ("feels-like") temperature. */
   feels: number;
-  /** WMO weather code → description/emoji via the helpers in useWeather. */
+  /** WMO weather code → description via codeDesc / icon via weatherKind. */
   code: number;
   /** Precipitation probability %, or null when the API omits it. */
   pp: number | null;

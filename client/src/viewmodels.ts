@@ -1,4 +1,5 @@
 import type { EditChip, PinCat } from './types';
+import type { IconName } from './icons';
 
 export interface ActView {
   id: string;
@@ -9,19 +10,26 @@ export interface ActView {
   linkShow: boolean;
   commentCount: number;
   edChips: EditChip[];
+  /** True when the item carries a map location. */
+  locShow: boolean;
+  /** Jump to the map focused on this item's location (only meaningful when locShow). */
+  onMap: () => void;
   onTap: () => void;
 }
 
 export interface FoodView {
   id: string;
   name: string;
-  type: string;
   memo: string;
   memoShow: boolean;
   link: string;
   linkShow: boolean;
   commentCount: number;
   edChips: EditChip[];
+  /** True when the item carries a map location. */
+  locShow: boolean;
+  /** Jump to the map focused on this item's location (only meaningful when locShow). */
+  onMap: () => void;
   onTap: () => void;
 }
 
@@ -58,7 +66,7 @@ export interface PinView {
   memo: string;
   memoShow: boolean;
   cat: PinCat;
-  emoji: string;
+  icon: IconName;
   color: string;
   /** Localized category name (e.g. 맛집 / 美食). */
   catLabel: string;
@@ -70,11 +78,15 @@ export interface PinView {
   edChips: EditChip[];
   /** Focus the pin on the map + open its editor. */
   onTap: () => void;
+  /** True for markers synthesized from a 맛집/액티비티 location (not a real pin):
+   *  rendered filled to read differently, and kept out of the saved-pins list. */
+  fromList?: boolean;
 }
 
-/** Map pin-placement mode: dropping a brand-new pin, or moving an existing one
- *  to a freshly tapped location. Null when the map is in normal (view) mode. */
-export type PlaceMode = { kind: 'new' } | { kind: 'move'; id: string };
+/** Map pin-placement mode: dropping a brand-new pin, moving an existing one to a
+ *  freshly tapped location, or picking a 맛집/액티비티 item's location from its
+ *  editor. Null when the map is in normal (view) mode. */
+export type PlaceMode = { kind: 'new' } | { kind: 'move'; id: string } | { kind: 'item' };
 
 /** One member's live shared location, resolved from presence for the map. */
 export interface LiveLocView {

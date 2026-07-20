@@ -11,6 +11,7 @@ import type {
   TideDay,
   TripDoc,
 } from './types';
+import type { IconName } from './icons';
 
 export const KEY = 'paros-trip-2026-v1';
 export const ROOM_DEFAULT = 'paros-daecheon-2026-x7k3q9';
@@ -23,20 +24,20 @@ export interface PinCatDef {
   id: PinCat;
   ko: string;
   zh: string;
-  /** Marker glyph shown on the map (no image assets needed). */
-  emoji: string;
+  /** Marker glyph (SVG icon name) shown on the map — see `Icon`/`iconSvg`. */
+  icon: IconName;
   /** Marker/badge accent colour. */
   color: string;
 }
 
 /** The closed set of pin categories, colour-coded on the map. */
 export const PIN_CATS: PinCatDef[] = [
-  { id: 'place', ko: '장소', zh: '地点', emoji: '📍', color: '#0B7CD8' },
-  { id: 'food', ko: '맛집', zh: '美食', emoji: '🍽️', color: '#E8503A' },
-  { id: 'play', ko: '놀거리', zh: '玩乐', emoji: '🏖️', color: '#1FAF6B' },
-  { id: 'meet', ko: '모임', zh: '集合', emoji: '🚩', color: '#F5A800' },
-  { id: 'stay', ko: '숙소', zh: '住宿', emoji: '🏨', color: '#A24BE8' },
-  { id: 'park', ko: '주차', zh: '停车', emoji: '🅿️', color: '#5A7D96' },
+  { id: 'place', ko: '장소', zh: '地点', icon: 'place', color: '#0B7CD8' },
+  { id: 'food', ko: '맛집', zh: '美食', icon: 'restaurant', color: '#E8503A' },
+  { id: 'play', ko: '놀거리', zh: '玩乐', icon: 'beach_access', color: '#1FAF6B' },
+  { id: 'meet', ko: '모임', zh: '集合', icon: 'flag', color: '#F5A800' },
+  { id: 'stay', ko: '숙소', zh: '住宿', icon: 'hotel', color: '#A24BE8' },
+  { id: 'park', ko: '주차', zh: '停车', icon: 'local_parking', color: '#5A7D96' },
 ];
 
 const PIN_CAT_MAP: Record<string, PinCatDef> = Object.fromEntries(
@@ -311,10 +312,10 @@ const packing: PackItem[] = [
 ];
 
 const foods: Food[] = [
-  { id: 'f1', name: '대천항 수산시장', zh: '大川港水产市场', type: '회 · 조개구이', memo: '싱싱한 회 떠서 바로 먹기', likes: [] },
-  { id: 'f2', name: '키조개 삼합', zh: '牛角蛤三合烤肉', type: '구이', memo: '보령 명물 키조개+삼겹살+버섯', likes: [] },
-  { id: 'f3', name: '스카이 횟집 (리조트 16층)', zh: '度假村16楼海景餐厅', type: '회 · 오션뷰', memo: '바다 보며 저녁 한 끼', likes: [] },
-  { id: 'f4', name: '해변 오션뷰 카페', zh: '海景咖啡厅', type: '카페', memo: '노을 시간에 가면 최고', likes: [] },
+  { id: 'f1', name: '대천항 수산시장', zh: '大川港水产市场', memo: '싱싱한 회 떠서 바로 먹기', likes: [] },
+  { id: 'f2', name: '키조개 삼합', zh: '牛角蛤三合烤肉', memo: '보령 명물 키조개+삼겹살+버섯', likes: [] },
+  { id: 'f3', name: '스카이 횟집 (리조트 16층)', zh: '度假村16楼海景餐厅', memo: '바다 보며 저녁 한 끼', likes: [] },
+  { id: 'f4', name: '해변 오션뷰 카페', zh: '海景咖啡厅', memo: '노을 시간에 가면 최고', likes: [] },
 ];
 
 // Seed pins that orient the map on first load. They ship without a `ts`
