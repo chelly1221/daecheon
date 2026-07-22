@@ -6,6 +6,7 @@
 // filenames + dimensions — is synced. Images are downscaled to a display copy
 // plus a tiny grid thumbnail; videos upload as-is with a canvas-captured poster.
 import type { MediaRef } from './types';
+import { isIOS } from './pwa';
 
 /** Resolve a stored media filename to its served URL. */
 export function mediaUrl(roomId: string, file: string): string {
@@ -47,12 +48,13 @@ function anchorDownload(url: string, name: string) {
 export type SaveOutcome = 'shared' | 'downloaded' | 'canceled';
 
 /**
- * Save/share the given gallery items. On devices with the Web Share file API
- * (iOS/Android) hand the binaries to the native share sheet so the user can
- * "Save to Photos"/Files; on desktop fall back to direct same-origin
- * `<a download>` (which those browsers honor). A genuine share failure is
- * *thrown*, never silently downgraded to the anchor fallback — on iOS that
- * fallback is a no-op, so pretending it worked would hide a lost file.
+ * Save the given gallery items to the device. On iOS the binaries go to the
+ * native share sheet — the only route into the Photos app, and `<a download>`
+ * is a no-op in home-screen web apps there. Everywhere else (Android, desktop)
+ * same-origin `<a download>` anchors download directly — surfacing a share
+ * sheet there reads as the wrong action, not a save. A genuine iOS share
+ * failure is *thrown*, never silently downgraded to the anchor fallback, since
+ * that fallback would pretend a lost file was saved.
  *
  * Note: the share sheet needs every file resident at once, so a very large
  * multi-video batch is memory-heavy — save videos in small batches.
@@ -64,11 +66,10 @@ export async function saveMedia(items: SaveItem[]): Promise<SaveOutcome> {
     share?: (data: unknown) => Promise<void>;
   };
 
-  // Probe file-share support with a dummy File first, so a desktop browser
-  // (share() exists but can't share files) skips fetching every blob just to
-  // discard it and fall back anyway.
+  // Probe file-share support with a dummy File first, so an iOS version
+  // without it skips fetching every blob just to discard it and fall back.
   let canShareFiles = false;
-  if (typeof nav.share === 'function' && typeof nav.canShare === 'function') {
+  if (isIOS() && typeof nav.share === 'function' && typeof nav.canShare === 'function') {
     try {
       canShareFiles = nav.canShare({
         files: [new File([new Uint8Array(1)], 'probe.jpg', { type: 'image/jpeg' })],
@@ -104,8 +105,8 @@ export async function saveMedia(items: SaveItem[]): Promise<SaveOutcome> {
     }
   }
 
-  // No file-share support (desktop): direct same-origin downloads, staggered so
-  // the browser doesn't drop all but the first when fired back to back.
+  // Android/desktop (or iOS without file share): direct same-origin downloads,
+  // staggered so the browser doesn't drop all but the first when fired back to back.
   for (let i = 0; i < items.length; i++) {
     anchorDownload(items[i].url, saveName(items[i].url, items[i].kind, i));
     if (i < items.length - 1) await new Promise((r) => setTimeout(r, 350));

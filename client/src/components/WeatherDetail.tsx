@@ -67,7 +67,7 @@ export default function WeatherDetail({ L, lang, day, hours, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         style={{
           ...css(
-            'width:100%;max-width:430px;margin:0 auto;background:#FFFFFF;border-radius:22px 22px 0 0;padding:8px 14px 16px;display:flex;flex-direction:column;gap:12px;max-height:86vh;box-shadow:0 -8px 30px rgba(20,74,107,.18)',
+            'box-sizing:border-box;width:100%;max-width:430px;margin:0 auto;background:#FFFFFF;border-radius:22px 22px 0 0;padding:8px 14px 16px;display:flex;flex-direction:column;gap:12px;max-height:86vh;box-shadow:0 -8px 30px rgba(20,74,107,.18)',
           ),
           paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
           animation: 'slideUp .24s ease-out',

@@ -86,7 +86,7 @@ export default function EditSheet({
       <div
         onClick={(e) => e.stopPropagation()}
         style={css(
-          'width:100%;max-width:430px;background:#FFFFFF;border-radius:22px 22px 0 0;padding:20px 18px 28px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(10,50,80,.2)',
+          'box-sizing:border-box;width:100%;max-width:430px;background:#FFFFFF;border-radius:22px 22px 0 0;padding:20px 18px 28px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(10,50,80,.2)',
         )}
       >
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px')}>

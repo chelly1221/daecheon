@@ -256,7 +256,7 @@ export default function ItemDetail({
       <div
         onClick={(e) => e.stopPropagation()}
         style={css(
-          'position:relative;width:100%;max-width:430px;background:#FFFFFF;border-radius:22px 22px 0 0;padding:18px 16px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(10,50,80,.2);max-height:88vh',
+          'box-sizing:border-box;position:relative;width:100%;max-width:430px;background:#FFFFFF;border-radius:22px 22px 0 0;padding:18px 16px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(10,50,80,.2);max-height:88vh',
         )}
       >
         {/* Header: title + close */}

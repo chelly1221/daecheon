@@ -76,6 +76,16 @@ function isAndroid(): boolean {
   return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 }
 
+/** Running on iOS/iPadOS (incl. iPadOS 13+, which reports as MacIntel with touch). */
+export function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const nav = navigator as unknown as { platform?: string; maxTouchPoints?: number };
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (nav.platform === 'MacIntel' && (nav.maxTouchPoints ?? 0) > 1)
+  );
+}
+
 /**
  * iOS has no programmatic install — the only path is Safari's
  * Share → "Add to Home Screen". Return true when it's worth showing that hint:
@@ -84,14 +94,8 @@ function isAndroid(): boolean {
  */
 export function iosInstallHintEligible(): boolean {
   if (typeof navigator === 'undefined' || isStandalone()) return false;
-  const ua = navigator.userAgent;
-  const nav = navigator as unknown as { platform?: string; maxTouchPoints?: number };
-  const isIOS =
-    /iPad|iPhone|iPod/.test(ua) ||
-    // iPadOS 13+ reports as MacIntel with touch
-    (nav.platform === 'MacIntel' && (nav.maxTouchPoints ?? 0) > 1);
-  if (!isIOS) return false;
-  if (IN_APP_BROWSER.test(ua)) return false;
+  if (!isIOS()) return false;
+  if (IN_APP_BROWSER.test(navigator.userAgent)) return false;
   return true;
 }
 

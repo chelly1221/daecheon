@@ -73,7 +73,7 @@ export default function ProfileModal({ L, zh, meChips, onClose }: Props) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={css(
-          'width:100%;max-width:340px;background:#FFFFFF;border-radius:20px;padding:20px 18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(10,50,80,.3)',
+          'box-sizing:border-box;width:100%;max-width:340px;background:#FFFFFF;border-radius:20px;padding:20px 18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(10,50,80,.3)',
         )}
       >
         <div style={css("font-family:'Jua',sans-serif;font-size:18px;color:#164A6B;text-align:center")}>
